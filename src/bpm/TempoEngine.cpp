@@ -1,7 +1,8 @@
 #include "bpm/TempoEngine.h"
 #include <algorithm>
-#include <charconv>
+#include <cerrno>
 #include <cmath>
+#include <cstdlib>
 #include <numeric>
 #include <string>
 
@@ -16,12 +17,16 @@ TempoEngine::~TempoEngine() {
 }
 
 std::optional<double> TempoEngine::parseManualBpm(const std::string_view text) {
-    double value{};
-    const auto* begin = text.data();
-    const auto* end = begin + text.size();
-    const auto result = std::from_chars(begin, end, value);
-    if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(value) || value < 60.0 ||
-        value > 200.0)
+    if (text.empty())
+        return std::nullopt;
+
+    const std::string ownedText(text);
+    char* parsedEnd = nullptr;
+    errno = 0;
+    const auto value = std::strtod(ownedText.c_str(), &parsedEnd);
+    if (errno == ERANGE || parsedEnd == ownedText.c_str() ||
+        parsedEnd != ownedText.c_str() + ownedText.size() || !std::isfinite(value) ||
+        value < 60.0 || value > 200.0)
         return std::nullopt;
     return value;
 }

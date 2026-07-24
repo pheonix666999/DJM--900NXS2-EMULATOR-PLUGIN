@@ -25,7 +25,7 @@ jobs:
           submodules: recursive
       - name: Validate repository
         run: |
-          test "$(git -C external/JUCE describe --tags --exact-match)" = "8.0.13"
+          test "$(git -C external/JUCE rev-parse HEAD)" = "7c9d3783b127263d72bb65fe0a7e2dc8a02a7ac2"
           test -f docs/reference/djm900nxs2-effects-reference.png
           ! git ls-files | grep -E '(^out/|\.exe$|\.app/|\.p12$|\.pfx$)'
       - name: Check formatting
@@ -44,7 +44,8 @@ jobs:
         shell: pwsh
         run: |
           cmake --version
-          cl 2>&1 | Select-Object -First 2
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          & $vswhere -latest -property installationVersion
       - name: Configure
         run: cmake --preset ci-windows
       - name: Build
