@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Existing v* tag to release
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            preset: ci-windows
+            test: test-windows
+            label: Windows-x64
+          - os: macos-14
+            preset: ci-macos
+            test: test-macos
+            label: macOS-Universal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
+          submodules: recursive
+      - run: cmake --preset ${{ matrix.preset }}
+      - run: cmake --build --preset ${{ matrix.preset }}
+      - run: ctest --preset ${{ matrix.test }} --output-on-failure
+      - name: Stage Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem out -Recurse -Filter QuadBeatFX.exe | Select-Object -First 1
+          if (-not $exe) { throw "Missing executable" }
+          New-Item -Type Directory -Force "release/QuadBeatFX" | Out-Null
+          Copy-Item $exe.FullName,README.md,LICENSE.md,THIRD_PARTY_NOTICES.md release/QuadBeatFX/
+          Compress-Archive release/QuadBeatFX/* release/QuadBeatFX-Windows-x64.zip
+          (Get-FileHash release/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
+            Set-Content release/QuadBeatFX-Windows-x64.zip.sha256
+      - name: Stage macOS
+        if: runner.os == 'macOS'
+        run: |
+          APP="$(find out -name 'QuadBeat FX.app' -type d | head -1)"
+          test -n "$APP"
+          lipo -info "$APP/Contents/MacOS/QuadBeat FX" | grep arm64
+          lipo -info "$APP/Contents/MacOS/QuadBeat FX" | grep x86_64
+          codesign --force --deep --sign - "$APP"
+          mkdir -p release
+          ditto -c -k --keepParent "$APP" release/QuadBeatFX-macOS-Universal.zip
+          shasum -a 256 release/QuadBeatFX-macOS-Universal.zip \
+            > release/QuadBeatFX-macOS-Universal.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuadBeatFX-${{ matrix.label }}
+          path: release/*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Publish unsigned release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 ||
+            gh release create "$TAG" --title "QuadBeat FX $TAG" \
+              --notes "Unsigned Windows and macOS builds. See included licensing notices."
+          gh release upload "$TAG" release/* --clobber

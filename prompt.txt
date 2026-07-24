@@ -1,0 +1,1468 @@
+You are the principal C++ audio-software engineer responsible for implementing this project end to end.
+
+PROJECT WORKING NAME
+QuadBeat FX
+
+PRODUCT
+A professional standalone four-channel DJ mixer and Beat FX desktop application for:
+
+- Windows 10/11 x64
+- macOS 12 or newer
+- Apple Silicon and Intel Macs
+
+The application is functionally inspired by professional four-channel club mixers, including the DJM-900NXS2 effects workflow, but it must use completely original branding and original graphical styling.
+
+IMPORTANT INTELLECTUAL-PROPERTY RULES
+
+1. Do not use the names Pioneer, Pioneer DJ, DJM, DJM-900NXS2, Nexus, or any manufacturer logo inside the application, executable metadata, product name, bundle identifier, screenshots, installer, or release packages.
+2. Do not recreate the supplied reference image pixel-for-pixel.
+3. Do not use the reference image as an application background or skin.
+4. Use the image only to understand:
+   - control grouping,
+   - general effects workflow,
+   - information hierarchy,
+   - X-PAD interaction,
+   - beat-selection controls,
+   - TIME and LEVEL/DEPTH controls.
+5. Create an original dark professional interface with distinct dimensions, typography, spacing, knob styling, colors, icons, and panel arrangement.
+6. The application must never imply official affiliation with or endorsement by another manufacturer.
+7. The supplied image must remain under docs/reference and must not be included in application packages.
+8. If the repository contains a PNG/JPG reference image elsewhere, move it without modifying its contents to:
+   docs/reference/djm900nxs2-effects-reference.png
+9. If no reference image exists, do not fabricate one and do not download one.
+
+PRIMARY DEVELOPMENT RULE
+
+Do not stop after producing scaffolding, documentation, mockups, inactive controls, or placeholder DSP. Continue through implementation, automated testing, GitHub Actions configuration, packaging, and documentation.
+
+GitHub Actions is the authoritative compilation and automated-validation environment.
+
+Do not claim something was compiled or validated unless the corresponding command or GitHub Actions job actually passed.
+
+TECHNOLOGY
+
+- C++20
+- JUCE 8.0.13, pinned exactly as a Git submodule under external/JUCE
+- CMake
+- JUCE CMake API
+- Standalone desktop application only
+- No VST, VST3, AU, AAX, or LV2 target in this version
+- JUCE AudioDeviceManager for audio-device management
+- JUCE MIDI APIs
+- JUCE DSP module where suitable
+- JUCE UnitTest framework or a separate JUCE-based console test target
+- No mandatory cloud service
+- No telemetry
+- No advertisements
+- No runtime internet requirement
+- No dependency that requires a subscription or runtime account
+- No GPL dependency other than anything deliberately permitted by the repository’s final licensing decision
+- Do not silently select a project license that conflicts with JUCE or ASIO requirements
+
+WINDOWS AUDIO
+
+Support:
+
+- ASIO when QB_ENABLE_ASIO=ON
+- WASAPI fallback
+- Configurable sample rate
+- Configurable audio buffer size
+- Configurable physical input/output channel mapping
+
+Add the CMake option:
+
+option(QB_ENABLE_ASIO "Enable JUCE ASIO support on Windows" ON)
+
+Enable JUCE_ASIO only on Windows when that option is enabled.
+
+Do not commit a separately downloaded proprietary SDK or private license file. Document JUCE and Steinberg licensing implications in docs/LICENSING.md and THIRD_PARTY_NOTICES.md.
+
+MACOS AUDIO
+
+Use CoreAudio through JUCE.
+
+Create a Universal macOS application containing:
+
+- arm64
+- x86_64
+
+Use:
+
+CMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+APPLICATION IDENTITY
+
+Use original identifiers similar to:
+
+- Product name: QuadBeat FX
+- Executable target: QuadBeatFX
+- macOS bundle ID: com.quadbeat.fx
+- Company placeholder: QuadBeat Audio
+
+Keep company/product identifiers centralized in CMake so they can be changed easily.
+
+REPOSITORY STRUCTURE
+
+Create a maintainable structure similar to:
+
+/
+├── .github/
+│   ├── workflows/
+│   │   ├── ci.yml
+│   │   └── release.yml
+│   └── dependabot.yml
+├── cmake/
+│   ├── CompilerWarnings.cmake
+│   ├── Sanitizers.cmake
+│   └── Packaging.cmake
+├── docs/
+│   ├── reference/
+│   ├── ARCHITECTURE.md
+│   ├── AUDIO_ROUTING.md
+│   ├── BUILDING.md
+│   ├── CI.md
+│   ├── DSP.md
+│   ├── HARDWARE_VALIDATION.md
+│   ├── LICENSING.md
+│   ├── MIDI.md
+│   ├── RELEASES.md
+│   └── USER_GUIDE.md
+├── external/
+│   └── JUCE/
+├── resources/
+│   ├── fonts/
+│   ├── icons/
+│   └── resource_manifest.md
+├── src/
+│   ├── app/
+│   ├── audio/
+│   ├── bpm/
+│   ├── dsp/
+│   │   ├── effects/
+│   │   ├── filters/
+│   │   └── utilities/
+│   ├── midi/
+│   ├── model/
+│   ├── state/
+│   └── ui/
+├── tests/
+│   ├── bpm/
+│   ├── dsp/
+│   ├── midi/
+│   ├── routing/
+│   └── state/
+├── AGENTS.md
+├── CMakeLists.txt
+├── CMakePresets.json
+├── LICENSE.md
+├── README.md
+├── THIRD_PARTY_NOTICES.md
+└── .gitignore
+
+Do not create giant monolithic source files. Keep components focused. Avoid production source files significantly larger than approximately 500 lines unless there is a clear technical justification.
+
+CREATE AGENTS.MD
+
+Create a concise repository-level AGENTS.md containing:
+
+- project purpose,
+- architecture summary,
+- required build commands,
+- required test commands,
+- formatting command,
+- Git rules,
+- real-time audio-thread constraints,
+- requirement to update documentation when behavior changes,
+- requirement to keep GitHub Actions green,
+- requirement to avoid placeholders,
+- requirement not to modify the reference image,
+- requirement not to introduce manufacturer branding,
+- requirement to leave the working tree clean.
+
+Tell future Codex tasks to inspect AGENTS.md and relevant documentation before modifying code.
+
+AUDIO ENGINE
+
+Implement a real four-channel stereo mixer engine.
+
+Required logical buses:
+
+- Stereo Channel 1
+- Stereo Channel 2
+- Stereo Channel 3
+- Stereo Channel 4
+- Microphone bus
+- Crossfader A bus
+- Crossfader B bus
+- Master bus
+- Booth bus
+- Headphones/Cue bus
+
+Allow users to map available physical device channels to:
+
+- Channel 1 left/right
+- Channel 2 left/right
+- Channel 3 left/right
+- Channel 4 left/right
+- Microphone input
+- Master output left/right
+- Booth output left/right
+- Headphones output left/right
+
+The application must handle interfaces with fewer channels gracefully.
+
+Examples:
+
+- With only two output channels, permit Master output while clearly marking Booth and Headphones outputs unavailable.
+- Never access nonexistent device channels.
+- Preserve mappings between launches when the same device remains available.
+- Fall back safely when a saved device is missing.
+
+Each mixer channel must contain:
+
+- input source assignment,
+- trim/gain,
+- three-band EQ,
+- EQ/Isolator mode,
+- channel fader,
+- cue enable,
+- crossfader assignment A/B/Thru,
+- stereo peak/RMS meter,
+- clipping indication,
+- mute,
+- channel label.
+
+Implement:
+
+- master level,
+- booth level,
+- cue/master headphones mix,
+- headphones level,
+- crossfader,
+- selectable crossfader curve,
+- master stereo meter,
+- booth stereo meter,
+- headphones stereo meter.
+
+EQ AND ISOLATOR
+
+Each channel must have LOW, MID, and HIGH controls.
+
+Classic EQ mode:
+
+- musical cut/boost behavior,
+- limited attenuation,
+- sensible gain limits,
+- center detent at unity.
+
+Isolator mode:
+
+- each band can attenuate effectively to silence,
+- stable crossover behavior,
+- no excessive phase or gain discontinuities.
+
+Use parameter smoothing for gain and filter changes.
+
+Document crossover frequencies and filter topology in docs/DSP.md.
+
+REAL-TIME AUDIO REQUIREMENTS
+
+The audio callback must not:
+
+- allocate heap memory,
+- free memory,
+- acquire blocking mutexes,
+- perform filesystem access,
+- write logs,
+- use network calls,
+- construct GUI objects,
+- parse JSON/XML,
+- resize containers,
+- throw exceptions.
+
+Preallocate effect buffers during prepare().
+
+Use atomics, lock-free snapshots, or bounded nonblocking message passing for parameter transfer.
+
+Smooth parameters to prevent zipper noise.
+
+Protect against:
+
+- NaN,
+- infinity,
+- denormals,
+- unstable feedback,
+- runaway gain,
+- invalid BPM,
+- invalid sample rate,
+- zero-length buffers.
+
+All processors must support at minimum:
+
+- 44.1 kHz
+- 48 kHz
+- 88.2 kHz
+- 96 kHz
+- common buffer sizes from 32 to 2048 samples
+
+BPM SYSTEM
+
+Implement three tempo sources:
+
+1. Automatic detection
+2. Manual typed BPM
+3. TAP tempo
+
+Automatic BPM detection:
+
+- calculate an onset-strength envelope,
+- use autocorrelation or another documented deterministic tempo-estimation method,
+- operate on the selected analysis source,
+- support approximately 60–200 BPM,
+- expose a confidence value,
+- smooth estimates,
+- reject implausible sudden jumps,
+- support half-time/double-time correction,
+- run analysis outside the real-time-critical audio path where practical,
+- never block the audio callback.
+
+Create automated tests using generated click tracks at several tempos, including approximately:
+
+- 80 BPM
+- 100 BPM
+- 120 BPM
+- 128 BPM
+- 150 BPM
+
+Manual BPM:
+
+- allow clicking the BPM value,
+- display an editable text field,
+- accept keyboard input,
+- validate the range,
+- support decimal BPM,
+- Enter confirms,
+- Escape cancels,
+- invalid values do not modify the active tempo.
+
+TAP tempo:
+
+- dedicated TAP button,
+- mouse activation,
+- keyboard shortcut,
+- MIDI mapping,
+- rolling interval average,
+- reject stale taps,
+- reset after a configurable timeout,
+- ignore clearly invalid intervals.
+
+Display the active source:
+
+- AUTO
+- MANUAL
+- TAP
+
+BEAT CLOCK
+
+Create a sample-accurate internal beat clock based on:
+
+- active BPM,
+- sample rate,
+- effect division,
+- reset/phase state.
+
+Supported beat divisions:
+
+- 1/16
+- 1/8
+- 1/4
+- 1/2
+- 3/4
+- 1
+- 2
+- 4
+
+The left and right beat-navigation buttons must move through this ordered division list without invalid indices.
+
+X-PAD
+
+Create an interactive X-PAD section containing all eight beat divisions.
+
+Requirements:
+
+- clicking a division activates it,
+- current division is visually obvious,
+- X-PAD selection and arrow buttons remain synchronized,
+- MIDI mapping is supported,
+- keyboard focus is supported,
+- state is persisted,
+- quantized effects respond correctly to division changes,
+- no inactive decorative controls.
+
+BEAT FX
+
+Implement all fifteen functional Beat FX:
+
+1. Delay
+2. Echo
+3. Ping Pong
+4. Spiral
+5. Reverb
+6. Trans
+7. Filter
+8. Flanger
+9. Phaser
+10. Pitch
+11. Slip Roll
+12. Roll
+13. Vinyl Brake
+14. Helix
+15. Pan
+
+Create a common processor interface with methods conceptually equivalent to:
+
+- prepare
+- reset
+- setParameters
+- process
+- setTempo
+- setBeatDivision
+
+The exact architecture may differ if a better design is documented.
+
+Each effect must:
+
+- process stereo audio,
+- work at all supported sample rates,
+- support bypass,
+- have a useful TIME behavior,
+- have a useful LEVEL/DEPTH behavior,
+- synchronize appropriately with BPM where relevant,
+- avoid clicks when activated/deactivated,
+- avoid unbounded feedback,
+- handle silence,
+- remain stable under rapidly changing controls.
+
+DSP BEHAVIOR
+
+Delay:
+- beat-synchronized delay time,
+- controlled feedback where applicable,
+- smooth time changes.
+
+Echo:
+- repeated feedback echo,
+- tempo synchronization,
+- safe feedback limit.
+
+Ping Pong:
+- alternating stereo repeats,
+- stable feedback,
+- correct mono-input handling.
+
+Spiral:
+- feedback delay network with evolving pitch/phase or spectral movement,
+- create a distinctive spiralling behavior,
+- document the chosen approximation,
+- do not leave it as an alias of another effect.
+
+Reverb:
+- stereo reverb,
+- tempo division influences decay or predelay,
+- TIME controls the primary duration-related parameter.
+
+Trans:
+- tempo-synchronized rhythmic gating,
+- click-free transitions,
+- division controls gate rhythm.
+
+Filter:
+- resonant filter sweep,
+- LEVEL/DEPTH controls intensity or resonance/mix,
+- TIME or beat position controls modulation behavior.
+
+Flanger:
+- short modulated delay,
+- tempo-synchronized modulation,
+- feedback protection.
+
+Phaser:
+- multiple all-pass stages,
+- tempo-synchronized LFO,
+- stable coefficients.
+
+Pitch:
+- real pitch-shifting behavior using a documented real-time-safe approach,
+- not simple playback gain or a mislabeled filter,
+- smooth transitions,
+- bounded latency.
+
+Slip Roll:
+- capture and loop the selected recent segment,
+- underlying live input continues advancing,
+- when released, return to the current live position,
+- avoid discontinuities.
+
+Roll:
+- capture and repeat a beat-sized segment,
+- beat division controls loop length,
+- controlled transitions on activation and release.
+
+Vinyl Brake:
+- simulate progressive platter slowdown,
+- use a preallocated ring buffer and variable read rate or another documented technique,
+- TIME determines braking duration,
+- restore normal live operation safely.
+
+Helix:
+- create a looping, evolving delay/phase effect,
+- distinctly different from Delay, Echo, Spiral, and Flanger,
+- document its model.
+
+Pan:
+- automatic left/right movement,
+- beat-synchronized LFO,
+- equal-power or otherwise documented panning.
+
+Do not implement effects as empty classes, simple gain changes, or aliases merely to satisfy the effect count.
+
+FX FREQUENCY SELECTION
+
+Implement three independently selectable buttons:
+
+- LOW
+- MID
+- HIGH
+
+Behavior:
+
+- use a three-band crossover before Beat FX processing,
+- process only enabled frequency bands,
+- recombine processed and bypassed bands,
+- permit multiple selected bands,
+- if no band is selected, either treat this as full-band or prevent the final band from being deselected; choose one policy and document it,
+- avoid major gain changes at crossover boundaries,
+- smooth enable/disable transitions.
+
+Use sensible default crossover frequencies, such as approximately:
+
+- LOW/MID: 250 Hz
+- MID/HIGH: 2.5 kHz
+
+Centralize these values so they can be adjusted later.
+
+FX ASSIGNMENT
+
+Implement a rotary assignment selector with:
+
+- MIC
+- CH1
+- CH2
+- CH3
+- CH4
+- CROSSFADER A
+- CROSSFADER B
+- MASTER
+
+The effect must process only the selected logical bus.
+
+Routing must not double-process the same signal accidentally.
+
+Add deterministic routing tests with identifiable test tones or impulses.
+
+TIME CONTROL
+
+The TIME knob must:
+
+- modify the effect’s primary time/rate parameter,
+- display a meaningful value,
+- show milliseconds, percentage, semitones, beats, or another relevant unit depending on the selected effect,
+- support mouse drag,
+- mouse wheel,
+- double-click reset,
+- keyboard control,
+- MIDI mapping,
+- parameter smoothing.
+
+LEVEL/DEPTH CONTROL
+
+The LEVEL/DEPTH knob must:
+
+- modify wet/dry balance, intensity, feedback, or another documented main effect-strength parameter,
+- use equal-power wet/dry mixing where appropriate,
+- support mouse, keyboard, and MIDI,
+- avoid gain jumps.
+
+QUANTIZE
+
+Implement a Quantize toggle.
+
+When enabled:
+
+- effect activation,
+- loop capture,
+- or relevant parameter transitions align to the internal beat grid.
+
+When disabled:
+
+- actions begin immediately.
+
+Document which effects use quantization and how.
+
+AUTO/TAP CONTROL
+
+Implement the AUTO/TAP control as an actual tempo-source selector.
+
+The TAP button must remain usable whenever appropriate.
+
+MIDI LEARN
+
+Implement a comprehensive MIDI Learn system.
+
+Requirements:
+
+- enumerate MIDI input devices,
+- enable/disable MIDI inputs,
+- learn from CC and note messages,
+- support MIDI channel filtering,
+- map continuous controls,
+- map buttons/toggles,
+- support inverted ranges,
+- support custom min/max scaling,
+- support absolute CC,
+- support common relative encoder modes where practical,
+- provide soft takeover/pickup for absolute knobs and faders,
+- prevent parameter jumps,
+- allow deleting and editing mappings,
+- persist mappings,
+- show mapped state visually,
+- process MIDI thread-safely.
+
+At minimum, all major controls must be mappable:
+
+- channel trim,
+- EQ controls,
+- channel faders,
+- cue buttons,
+- crossfader,
+- master/booth/headphone controls,
+- effect selector,
+- effect assignment,
+- beat divisions,
+- arrow buttons,
+- TAP,
+- quantize,
+- frequency buttons,
+- TIME,
+- LEVEL/DEPTH.
+
+Create docs/MIDI.md explaining setup and mapping.
+
+STATE PERSISTENCE
+
+Persist:
+
+- audio-device settings where safe,
+- channel mappings,
+- output mappings,
+- mixer values,
+- EQ mode,
+- crossfader assignments,
+- effect selection,
+- effect assignment,
+- frequency selections,
+- BPM source and manual BPM,
+- current beat division,
+- MIDI mappings,
+- window size and position,
+- UI scale.
+
+Use a versioned state format.
+
+Handle missing, malformed, and older state files safely.
+
+Write state outside the audio thread.
+
+Do not store secrets.
+
+USER INTERFACE
+
+Create an original, professional, scalable interface.
+
+Required overall sections:
+
+- four vertical mixer channel strips,
+- central or right-side Beat FX section,
+- master/booth/headphones section,
+- device/settings access,
+- MIDI Learn access,
+- status area for audio and MIDI devices.
+
+Beat FX UI must contain:
+
+- virtual OLED-style display,
+- active effect name,
+- BPM value,
+- tempo source,
+- beat division,
+- X-PAD,
+- left arrow,
+- right arrow,
+- AUTO/TAP control,
+- TAP button,
+- Quantize button,
+- LOW/MID/HIGH buttons,
+- effect selector,
+- assignment selector,
+- TIME knob,
+- LEVEL/DEPTH knob.
+
+UI requirements:
+
+- resizable,
+- DPI aware,
+- usable at 100%, 125%, 150%, and 200% scaling,
+- minimum supported window size documented,
+- clear focus states,
+- keyboard navigation,
+- tooltips for non-obvious controls,
+- no manufacturer logos,
+- no copied proprietary fonts,
+- no text baked into raster backgrounds,
+- meters animate smoothly without blocking audio,
+- clipping indication remains visible briefly,
+- colors have adequate contrast,
+- controls remain usable without the reference image.
+
+Create a custom LookAndFeel rather than relying entirely on stock JUCE controls.
+
+Do not spend large CPU time rendering meters or repainting the entire application unnecessarily.
+
+SETTINGS
+
+Provide a settings panel containing:
+
+- audio device type,
+- device selection,
+- sample rate,
+- buffer size,
+- input channel mappings,
+- output channel mappings,
+- MIDI input selection,
+- UI scale,
+- restore defaults,
+- diagnostics information.
+
+Show actionable errors when:
+
+- device fails to open,
+- required channels are unavailable,
+- sample rate is unsupported,
+- output mapping is invalid.
+
+TEST TARGET
+
+Create a separate console target named:
+
+QuadBeatFXTests
+
+Tests must run without:
+
+- physical audio hardware,
+- ASIO driver,
+- CoreAudio device,
+- GUI display,
+- MIDI controller.
+
+Use deterministic generated audio.
+
+Required automated test categories:
+
+1. Mixer routing
+2. Channel gain
+3. Channel mute
+4. Channel cue
+5. Crossfader A/B/Thru
+6. Crossfader curves
+7. EQ mode
+8. Isolator mode
+9. Frequency-band routing
+10. Silence handling
+11. Impulse handling
+12. BPM click-track detection
+13. Manual BPM validation
+14. TAP tempo
+15. Beat-division navigation
+16. Beat-clock timing
+17. Each of the fifteen effects
+18. Effect assignment
+19. Bypass
+20. Parameter smoothing
+21. State save/load
+22. Corrupt state recovery
+23. MIDI mapping serialization
+24. MIDI scaling
+25. MIDI soft takeover
+26. NaN/infinity protection
+27. Multiple sample rates
+28. Multiple buffer sizes
+
+For effect tests, verify at minimum:
+
+- output is finite,
+- effect is not unexpectedly silent,
+- effect modifies an appropriate nontrivial input when active,
+- bypass is close to the unprocessed input,
+- output remains bounded,
+- reset is deterministic where expected.
+
+Add a test-generated validation summary.
+
+FORMAT AND STATIC QUALITY
+
+Create:
+
+- .clang-format
+- .clang-tidy where practical
+- compiler-warning configuration
+
+For project code, enable strong warnings:
+
+MSVC:
+- /W4
+- /permissive-
+- reasonable conformance flags
+
+Clang:
+- -Wall
+- -Wextra
+- -Wpedantic
+
+Use warnings as errors for project code in CI after correcting warnings.
+
+Do not apply project warning flags to JUCE internals.
+
+CMAKE PRESETS
+
+Create presets for:
+
+- dev-windows
+- ci-windows
+- dev-macos
+- ci-macos
+- test-windows
+- test-macos
+
+Use isolated output directories under out/.
+
+Commands should be consistent and documented, for example:
+
+git submodule update --init --recursive
+cmake --preset ci-windows
+cmake --build --preset ci-windows --config Release
+ctest --preset test-windows --output-on-failure
+
+Use valid preset inheritance and environment-independent paths.
+
+GITHUB ACTIONS: CI
+
+Create .github/workflows/ci.yml.
+
+Triggers:
+
+- push to main
+- pull_request
+- workflow_dispatch
+
+Use concurrency so outdated runs on the same branch are cancelled.
+
+Use minimum permissions:
+
+permissions:
+  contents: read
+
+Jobs:
+
+1. Repository/format validation on Ubuntu
+2. Windows x64 Release build and test
+3. macOS Universal Release build and test
+
+Use official actions:
+
+- actions/checkout@v4
+- actions/upload-artifact@v4
+
+Checkout must include:
+
+submodules: recursive
+
+WINDOWS JOB
+
+Use a stable GitHub-hosted Windows runner, preferably:
+
+windows-2022
+
+Steps:
+
+- checkout with recursive submodules,
+- print compiler and CMake versions,
+- configure with ci-windows preset,
+- build QuadBeatFX and QuadBeatFXTests,
+- run CTest with output on failure,
+- package a portable Windows ZIP,
+- verify the expected .exe exists,
+- generate SHA-256 checksum,
+- upload package, checksum, and test results.
+
+Build with QB_ENABLE_ASIO=ON.
+
+Do not require an installed physical ASIO driver to compile or run offline tests.
+
+MACOS JOB
+
+Use an appropriate stable macOS runner, preferably:
+
+macos-14
+
+Steps:
+
+- checkout with recursive submodules,
+- print Xcode, compiler, and CMake versions,
+- configure a Universal arm64+x86_64 build,
+- build QuadBeatFX and QuadBeatFXTests,
+- run CTest,
+- verify both architectures using lipo -info,
+- apply ad-hoc signing for CI when necessary,
+- package the .app in a ZIP or DMG,
+- generate SHA-256 checksum,
+- upload package, checksum, and test results.
+
+Do not require an Apple Developer certificate for ordinary CI artifacts.
+
+ARTIFACT NAMES
+
+Use clear artifact names such as:
+
+- QuadBeatFX-Windows-x64
+- QuadBeatFX-macOS-Universal
+- QuadBeatFX-Test-Results-Windows
+- QuadBeatFX-Test-Results-macOS
+
+Set an appropriate retention period, such as 14 days.
+
+CI must fail when:
+
+- compilation fails,
+- tests fail,
+- expected executable/app is missing,
+- macOS binary is not Universal,
+- formatting validation fails,
+- project warnings are emitted when warnings-as-errors is enabled.
+
+GITHUB ACTIONS: RELEASES
+
+Create .github/workflows/release.yml.
+
+Triggers:
+
+- tags matching v*
+- workflow_dispatch with a version input if implemented safely
+
+Permissions:
+
+permissions:
+  contents: write
+
+Build Windows and macOS again from the tagged commit.
+
+Release packages must contain:
+
+Windows:
+- QuadBeatFX.exe
+- README or quick-start file
+- relevant licenses/notices
+- checksum
+
+macOS:
+- QuadBeatFX.app
+- README or quick-start file
+- relevant licenses/notices
+- checksum
+
+Use GitHub CLI or official GitHub mechanisms to create the release and attach packages.
+
+Do not require third-party marketplace release actions unless there is a strong reason.
+
+Unsigned releases must be clearly marked as unsigned.
+
+Document optional future signing secrets without requiring them:
+
+- Windows code-signing certificate
+- certificate password
+- Apple signing identity
+- Apple certificate
+- notarization credentials
+
+Never commit signing credentials.
+
+PACKAGING
+
+Create reproducible packaging scripts or CPack configuration.
+
+Do not package:
+
+- source reference images,
+- build directories,
+- test binaries unless explicitly intended,
+- compiler intermediate files,
+- private keys,
+- Git metadata,
+- Codex files,
+- IDE files.
+
+README
+
+Create a complete README containing:
+
+- product overview,
+- original-brand disclaimer,
+- supported operating systems,
+- main features,
+- current limitations,
+- repository setup,
+- submodule setup,
+- GitHub Actions usage,
+- how to download workflow artifacts,
+- local build commands,
+- testing commands,
+- audio-device setup,
+- MIDI setup,
+- licensing warning,
+- unsigned-build warning,
+- project structure.
+
+HARDWARE VALIDATION DOCUMENT
+
+Create docs/HARDWARE_VALIDATION.md.
+
+Include manual tests for:
+
+- Windows ASIO device enumeration,
+- Windows WASAPI fallback,
+- macOS CoreAudio enumeration,
+- 2-channel interface,
+- 4-channel interface,
+- 8-or-more-channel interface,
+- Master output,
+- Booth output,
+- Headphones/Cue output,
+- sample-rate switching,
+- buffer-size switching,
+- device disconnection,
+- device reconnection,
+- latency observation,
+- underrun/dropout observation,
+- physical MIDI knobs,
+- physical MIDI buttons,
+- relative encoders,
+- soft takeover,
+- long-duration stability,
+- CPU usage,
+- clipping,
+- sleep/wake,
+- application restart and state restoration.
+
+Make it explicit that hosted CI cannot complete these hardware tests.
+
+LICENSING DOCUMENTATION
+
+Create:
+
+- LICENSE.md
+- THIRD_PARTY_NOTICES.md
+- docs/LICENSING.md
+
+Do not falsely claim that the application is ready for commercial distribution without the appropriate JUCE and ASIO licensing review.
+
+Explain:
+
+- the repository’s chosen source license or all-rights-reserved status,
+- JUCE licensing implications,
+- ASIO SDK/license implications,
+- that the reference image is documentation-only and excluded from distributions,
+- that no third-party trademarks are part of the application identity.
+
+Use an all-rights-reserved placeholder for project code unless the existing repository explicitly specifies another valid license.
+
+GITIGNORE
+
+Create the root .gitignore using the following contents. Preserve the exceptions for repository assets and test fixtures.
+
+----- BEGIN .gitignore -----
+
+# Operating systems
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100/
+.Trashes/
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# Windows crash and diagnostic files
+*.dmp
+*.mdmp
+*.wer
+
+# Editors and IDEs
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.VC.opendb
+*.code-workspace
+*.swp
+*.swo
+*~
+.project
+.cproject
+.settings/
+
+# Codex and local agent state
+.codex/
+.codex-*
+.agent/
+.agents/
+.local-agent/
+
+# CMake
+/build/
+/build-*/
+/out/
+/out-*/
+/cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+CPackConfig.cmake
+CPackSourceConfig.cmake
+compile_commands.json
+CMakeUserPresets.json
+*.cmake.user
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+rules.ninja
+
+# Make
+Makefile
+*.make
+
+# Visual Studio and MSBuild
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+x64/
+x86/
+ARM/
+ARM64/
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.props.user
+*.targets.user
+*.lastbuildstate
+*.tlog
+*.idb
+*.ipdb
+*.iobj
+*.pch
+*.res
+*.ilk
+*.exp
+*.lib
+*.pdb
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+xcuserdata/
+DerivedData/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM/
+*.dSYM.zip
+
+# JUCE/Projucer generated output
+JuceLibraryCode/
+Builds/
+GeneratedCode/
+*.jucer.user
+
+# Compiled binaries and libraries
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+*.obj
+*.lo
+*.la
+*.app
+*.app/
+*.framework
+*.bundle
+
+# Packaging output
+/dist/
+/artifacts/
+/packages/
+/package/
+/release-output/
+*.msi
+*.msix
+*.appx
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.zip
+*.7z
+*.tar
+*.tar.gz
+*.tgz
+
+# Test and coverage output
+Testing/
+test-results/
+test-output/
+coverage/
+coverage-*/
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+*.lcov
+coverage.xml
+junit.xml
+
+# Analysis tools
+.clangd/
+.cache/
+.cache-clang/
+.scan-build/
+scan-build/
+.clang-tidy-cache/
+cppcheck-build-dir/
+
+# Runtime files
+*.log
+logs/
+crash-reports/
+diagnostics/
+recordings/
+captures/
+renders/
+exports/
+autosaves/
+temp/
+tmp/
+*.tmp
+*.bak
+
+# Local application state
+QuadBeatFX.settings
+QuadBeatFX.state
+quadbeatfx.settings
+quadbeatfx-state.*
+user-settings/
+local-state/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+secrets/
+private/
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.mobileprovision
+*.provisionprofile
+*.cer
+*.crt
+*.csr
+
+# Signing and notarization files
+signing/
+notarization/
+authkey_*.p8
+api_key*.json
+
+# External dependency build output
+external/*/build/
+external/*/out/
+external/*/cmake-build-*/
+
+# Keep repository resources, reference material, and test fixtures
+!resources/
+!resources/**
+!docs/reference/
+!docs/reference/**
+!tests/fixtures/
+!tests/fixtures/**
+
+----- END .gitignore -----
+
+Do not ignore the JUCE submodule entry.
+
+Do not globally ignore PNG, JPG, WAV, AIFF, JSON, XML, or MIDI files because legitimate resources and deterministic test fixtures may use them.
+
+DEPENDABOT
+
+Create .github/dependabot.yml for GitHub Actions updates.
+
+Do not configure Dependabot to automatically update the pinned JUCE version without review.
+
+GIT AND EXECUTION PROCESS
+
+1. Inspect the existing repository before changing anything.
+2. Preserve useful existing work.
+3. Check for existing instructions and licenses.
+4. Create or update documentation before major implementation where this clarifies the architecture.
+5. Implement in coherent milestones.
+6. Run all available formatting and tests after each major milestone.
+7. Commit completed milestones with meaningful commit messages.
+8. Do not amend or rewrite existing commits.
+9. Do not create unnecessary branches.
+10. Leave the worktree clean.
+11. Never commit build outputs.
+12. Never commit credentials.
+13. Never commit generated release packages.
+14. Never mark a test passed without evidence.
+15. Never hide compiler errors by disabling an entire feature.
+16. Fix root causes instead of commenting out failing tests.
+17. Do not use empty catch blocks.
+18. Do not leave TODO/FIXME markers for required functionality.
+19. Do not replace required DSP with placeholders because the implementation is difficult.
+20. Do not change public behavior merely to make a weak test pass.
+
+GITHUB VALIDATION LOOP
+
+If GitHub authentication and gh CLI are available:
+
+1. Push committed changes.
+2. Trigger or observe the GitHub Actions workflow.
+3. Run:
+   gh run list
+4. Watch the relevant run:
+   gh run watch <run-id> --exit-status
+5. If a job fails:
+   - inspect logs,
+   - identify the actual cause,
+   - correct the code or workflow,
+   - commit the correction,
+   - push,
+   - watch the replacement run.
+6. Repeat until Windows and macOS jobs pass.
+
+If pushing or GitHub authentication is unavailable:
+
+- do not pretend CI ran,
+- commit all work,
+- provide the exact commands the user must run,
+- clearly state which validation remains pending.
+
+FINAL VALIDATION REPORT
+
+Create VALIDATION.md containing:
+
+- commit hash,
+- local commands run,
+- local results,
+- GitHub Actions run URLs or run IDs when available,
+- Windows build result,
+- macOS build result,
+- test counts,
+- artifact names,
+- known limitations,
+- hardware tests still required,
+- licensing review still required,
+- signing/notarization status.
+
+DEFINITION OF DONE
+
+The project is done only when all of the following are true:
+
+- repository architecture is complete,
+- the application target compiles on Windows through GitHub Actions,
+- the application target compiles as a Universal macOS app through GitHub Actions,
+- QuadBeatFXTests compiles on both systems,
+- automated tests pass,
+- all fifteen effects contain real functioning DSP,
+- all UI controls are connected to functioning behavior,
+- four mixer channels operate independently,
+- EQ and Isolator modes work,
+- automatic/manual/TAP BPM modes work,
+- X-PAD and arrows work,
+- effect frequency selection works,
+- effect assignment works,
+- TIME and LEVEL/DEPTH work,
+- MIDI Learn works and persists,
+- device mappings persist safely,
+- packages are uploaded as GitHub Actions artifacts,
+- tagged release workflow is present,
+- reference image is excluded from distributions,
+- documentation is complete,
+- .gitignore is complete,
+- no credentials or generated binaries are tracked,
+- no required feature is represented only by a placeholder,
+- VALIDATION.md accurately describes what was actually validated.
+
+At completion, respond with:
+
+1. concise implementation summary,
+2. commit hashes,
+3. GitHub Actions status,
+4. artifact names,
+5. test results,
+6. hardware validations still required,
+7. licensing/signing limitations,
+8. any genuine unresolved issue.
+
+Begin by inspecting the repository and creating a concrete implementation plan. Then execute the plan. Do not stop after presenting the plan.

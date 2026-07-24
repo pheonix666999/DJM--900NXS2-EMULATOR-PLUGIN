@@ -1,0 +1,117 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository:
+    name: Repository and format validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Validate repository
+        run: |
+          test "$(git -C external/JUCE describe --tags --exact-match)" = "8.0.13"
+          test -f docs/reference/djm900nxs2-effects-reference.png
+          ! git ls-files | grep -E '(^out/|\.exe$|\.app/|\.p12$|\.pfx$)'
+      - name: Check formatting
+        run: |
+          find src tests -type f \( -name '*.h' -o -name '*.cpp' \) -print0 |
+            xargs -0 clang-format --dry-run --Werror
+
+  windows:
+    name: Windows x64 Release
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Tool versions
+        shell: pwsh
+        run: |
+          cmake --version
+          cl 2>&1 | Select-Object -First 2
+      - name: Configure
+        run: cmake --preset ci-windows
+      - name: Build
+        run: cmake --build --preset ci-windows
+      - name: Test
+        run: ctest --preset test-windows --output-on-failure --output-junit out/ci-windows/test-results.xml
+      - name: Package
+        shell: pwsh
+        run: |
+          $exe = Get-ChildItem out/ci-windows -Recurse -Filter QuadBeatFX.exe | Select-Object -First 1
+          if (-not $exe) { throw "QuadBeatFX.exe was not produced" }
+          New-Item -ItemType Directory -Force artifacts/QuadBeatFX | Out-Null
+          Copy-Item $exe.FullName artifacts/QuadBeatFX/
+          Copy-Item README.md,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
+          Compress-Archive artifacts/QuadBeatFX/* artifacts/QuadBeatFX-Windows-x64.zip
+          (Get-FileHash artifacts/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
+            Set-Content artifacts/QuadBeatFX-Windows-x64.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuadBeatFX-Windows-x64
+          path: |
+            artifacts/QuadBeatFX-Windows-x64.zip
+            artifacts/QuadBeatFX-Windows-x64.zip.sha256
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuadBeatFX-Test-Results-Windows
+          path: out/ci-windows/test-results.xml
+          retention-days: 14
+
+  macos:
+    name: macOS Universal Release
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Tool versions
+        run: |
+          cmake --version
+          xcodebuild -version
+          clang++ --version
+      - name: Configure
+        run: cmake --preset ci-macos
+      - name: Build
+        run: cmake --build --preset ci-macos
+      - name: Test
+        run: ctest --preset test-macos --output-on-failure --output-junit out/ci-macos/test-results.xml
+      - name: Verify and package
+        run: |
+          APP="$(find out/ci-macos -name 'QuadBeat FX.app' -type d | head -1)"
+          test -n "$APP"
+          BIN="$APP/Contents/MacOS/QuadBeat FX"
+          lipo -info "$BIN" | grep arm64
+          lipo -info "$BIN" | grep x86_64
+          codesign --force --deep --sign - "$APP"
+          mkdir -p artifacts
+          ditto -c -k --keepParent "$APP" artifacts/QuadBeatFX-macOS-Universal.zip
+          shasum -a 256 artifacts/QuadBeatFX-macOS-Universal.zip \
+            > artifacts/QuadBeatFX-macOS-Universal.zip.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuadBeatFX-macOS-Universal
+          path: |
+            artifacts/QuadBeatFX-macOS-Universal.zip
+            artifacts/QuadBeatFX-macOS-Universal.zip.sha256
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuadBeatFX-Test-Results-macOS
+          path: out/ci-macos/test-results.xml
+          retention-days: 14

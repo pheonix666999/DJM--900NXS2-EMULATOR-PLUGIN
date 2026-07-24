@@ -1,0 +1,58 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      }
+    },
+    {
+      "name": "dev-windows",
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/dev-windows",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "QB_ENABLE_ASIO": "ON" }
+    },
+    {
+      "name": "ci-windows",
+      "inherits": "base",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/out/ci-windows",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": { "QB_ENABLE_ASIO": "ON" }
+    },
+    {
+      "name": "dev-macos",
+      "inherits": "base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/dev-macos",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64" }
+    },
+    {
+      "name": "ci-macos",
+      "inherits": "base",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/ci-macos",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "CMAKE_OSX_ARCHITECTURES": "arm64;x86_64" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "dev-windows", "configurePreset": "dev-windows", "configuration": "Debug" },
+    { "name": "ci-windows", "configurePreset": "ci-windows", "configuration": "Release", "targets": ["QuadBeatFX", "QuadBeatFXTests"] },
+    { "name": "dev-macos", "configurePreset": "dev-macos" },
+    { "name": "ci-macos", "configurePreset": "ci-macos", "targets": ["QuadBeatFX", "QuadBeatFXTests"] }
+  ],
+  "testPresets": [
+    { "name": "test-windows", "configurePreset": "ci-windows", "configuration": "Release", "output": { "outputOnFailure": true } },
+    { "name": "test-macos", "configurePreset": "ci-macos", "output": { "outputOnFailure": true } }
+  ]
+}

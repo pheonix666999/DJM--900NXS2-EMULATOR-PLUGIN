@@ -1,0 +1,7 @@
+option(QB_ENABLE_SANITIZERS "Enable address and undefined-behaviour sanitizers" OFF)
+function(qb_enable_sanitizers target)
+    if(QB_ENABLE_SANITIZERS AND NOT MSVC)
+        target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+        target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+    endif()
+endfunction()
