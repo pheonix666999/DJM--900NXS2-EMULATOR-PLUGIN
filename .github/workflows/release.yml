@@ -29,7 +29,7 @@ jobs:
             label: macOS-Universal
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref }}
           submodules: recursive
