@@ -60,14 +60,14 @@ jobs:
           Compress-Archive artifacts/QuadBeatFX/* artifacts/QuadBeatFX-Windows-x64.zip
           (Get-FileHash artifacts/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
             Set-Content artifacts/QuadBeatFX-Windows-x64.zip.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuadBeatFX-Windows-x64
           path: |
             artifacts/QuadBeatFX-Windows-x64.zip
             artifacts/QuadBeatFX-Windows-x64.zip.sha256
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuadBeatFX-Test-Results-Windows
           path: out/ci-windows/test-results.xml
@@ -103,14 +103,14 @@ jobs:
           ditto -c -k --keepParent "$APP" artifacts/QuadBeatFX-macOS-Universal.zip
           shasum -a 256 artifacts/QuadBeatFX-macOS-Universal.zip \
             > artifacts/QuadBeatFX-macOS-Universal.zip.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuadBeatFX-macOS-Universal
           path: |
             artifacts/QuadBeatFX-macOS-Universal.zip
             artifacts/QuadBeatFX-macOS-Universal.zip.sha256
           retention-days: 14
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuadBeatFX-Test-Results-macOS
           path: out/ci-macos/test-results.xml
