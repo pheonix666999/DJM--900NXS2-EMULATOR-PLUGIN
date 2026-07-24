@@ -5,13 +5,6 @@
 #include <chrono>
 
 namespace qb {
-namespace {
-void addLabelled(juce::Component& owner, juce::Slider& slider, const juce::String& name) {
-    slider.setName(name);
-    slider.setTooltip(name);
-    owner.addAndMakeVisible(slider);
-}
-} // namespace
 
 MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
                              juce::AudioDeviceManager& devices)
