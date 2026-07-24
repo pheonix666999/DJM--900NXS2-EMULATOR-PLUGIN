@@ -68,6 +68,12 @@ void EffectRack::reset() noexcept {
     gate = 0.0F;
     brakeRead = 0.0F;
     brakeSpeed = 1.0F;
+    loopCaptureStart = 0.0F;
+    loopPhase = 0.0F;
+    samplesToQuantizeBoundary = 0.0;
+    activeEnabled = false;
+    pendingEnabled = false;
+    hasPendingEnable = false;
     wasEnabled = false;
 }
 
@@ -78,6 +84,7 @@ void EffectRack::setParameters(const EffectParameters& parameters) noexcept {
     bpm.store(std::isfinite(parameters.bpm) ? std::clamp(parameters.bpm, 60.0, 200.0) : 120.0);
     division.store(std::clamp(parameters.division, 0, 7));
     enabled.store(parameters.enabled);
+    quantized.store(parameters.quantize);
     bands.store((parameters.low ? 1U : 0U) | (parameters.mid ? 2U : 0U) |
                 (parameters.high ? 4U : 0U));
 }
@@ -90,6 +97,21 @@ float EffectRack::readDelay(const int channel, const float delaySamples) const n
                     std::clamp(delaySamples, 1.0F, static_cast<float>(buffer.size() - 2));
     while (position < 0.0F)
         position += static_cast<float>(buffer.size());
+    const auto first = static_cast<int>(position) % static_cast<int>(buffer.size());
+    const auto second = (first + 1) % static_cast<int>(buffer.size());
+    const auto fraction = position - std::floor(position);
+    return buffer[static_cast<size_t>(first)] * (1.0F - fraction) +
+           buffer[static_cast<size_t>(second)] * fraction;
+}
+
+float EffectRack::readAt(const int channel, float position) const noexcept {
+    const auto& buffer = delay[static_cast<size_t>(channel)];
+    if (buffer.empty())
+        return 0.0F;
+    const auto length = static_cast<float>(buffer.size());
+    position = std::fmod(position, length);
+    if (position < 0.0F)
+        position += length;
     const auto first = static_cast<int>(position) % static_cast<int>(buffer.size());
     const auto second = (first + 1) % static_cast<int>(buffer.size());
     const auto fraction = position - std::floor(position);
@@ -229,9 +251,9 @@ void EffectRack::processWet(const float left, const float right, float& wetLeft,
     case EffectType::slipRoll:
     case EffectType::roll: {
         const auto loopSamples = std::max(32.0F, beatSamples);
-        const auto loopPosition = std::fmod(lfoPhase * loopSamples, loopSamples);
-        wetLeft = readDelay(0, loopSamples - loopPosition);
-        wetRight = readDelay(1, loopSamples - loopPosition);
+        wetLeft = readAt(0, loopCaptureStart + loopPhase);
+        wetRight = readAt(1, loopCaptureStart + loopPhase);
+        loopPhase = std::fmod(loopPhase + 1.0F, loopSamples);
         writeDelay(left, right);
         if (p.type == EffectType::slipRoll) {
             wetLeft = 0.85F * wetLeft + 0.15F * left;
@@ -292,14 +314,43 @@ void EffectRack::process(juce::AudioBuffer<float>& stereo) noexcept {
     p.bpm = bpm.load();
     p.division = division.load();
     p.enabled = enabled.load();
+    p.quantize = quantized.load();
     const auto bandMask = bands.load();
     p.low = (bandMask & 1U) != 0U;
     p.mid = (bandMask & 2U) != 0U;
     p.high = (bandMask & 4U) != 0U;
-    const auto targetDepth = p.enabled ? p.depth : 0.0F;
+    const auto requestedEnabled = p.enabled;
+    const auto quantizePeriod = 60.0 / p.bpm * beatValues[static_cast<size_t>(p.division)] * rate;
+    if (samplesToQuantizeBoundary <= 0.0)
+        samplesToQuantizeBoundary = std::max(1.0, quantizePeriod);
+    if (!p.quantize) {
+        activeEnabled = requestedEnabled;
+        hasPendingEnable = false;
+    } else if (requestedEnabled != activeEnabled) {
+        pendingEnabled = requestedEnabled;
+        hasPendingEnable = true;
+    }
     auto* left = stereo.getWritePointer(0);
     auto* right = stereo.getWritePointer(1);
     for (int sample = 0; sample < stereo.getNumSamples(); ++sample) {
+        if (p.quantize) {
+            samplesToQuantizeBoundary -= 1.0;
+            if (samplesToQuantizeBoundary <= 0.0) {
+                samplesToQuantizeBoundary += std::max(1.0, quantizePeriod);
+                if (hasPendingEnable) {
+                    activeEnabled = pendingEnabled;
+                    hasPendingEnable = false;
+                }
+            }
+        }
+        if (activeEnabled && !wasEnabled &&
+            (p.type == EffectType::roll || p.type == EffectType::slipRoll)) {
+            const auto loopSamples = static_cast<float>(std::max(32.0, quantizePeriod));
+            loopCaptureStart = static_cast<float>(writePosition) - loopSamples;
+            loopPhase = 0.0F;
+        }
+        p.enabled = activeEnabled;
+        const auto targetDepth = activeEnabled ? p.depth : 0.0F;
         smoothedTime += 0.002F * (p.time - smoothedTime);
         smoothedDepth += 0.002F * (targetDepth - smoothedDepth);
         p.time = smoothedTime;
@@ -320,7 +371,7 @@ void EffectRack::process(juce::AudioBuffer<float>& stereo) noexcept {
         const auto wetGain = std::sin(smoothedDepth * pi * 0.5F);
         left[sample] = finite(bypassL + selectedL * dryGain + wetL * wetGain);
         right[sample] = finite(bypassR + selectedR * dryGain + wetR * wetGain);
+        wasEnabled = activeEnabled;
     }
-    wasEnabled = p.enabled;
 }
 } // namespace qb

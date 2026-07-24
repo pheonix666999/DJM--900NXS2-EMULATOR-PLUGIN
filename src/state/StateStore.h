@@ -20,7 +20,7 @@ struct ChannelState {
 };
 
 struct AppState {
-    static constexpr int currentVersion = 1;
+    static constexpr int currentVersion = 2;
     int version{currentVersion};
     std::array<ChannelState, channelCount> channels{};
     float crossfader{};
@@ -46,6 +46,12 @@ struct AppState {
     int windowHeight{900};
     std::string audioDeviceXml;
     juce::var midiMappings;
+    std::array<int, 9> inputMappings{0, 1, 2, 3, 4, 5, 6, 7, -1};
+    std::array<int, 6> outputMappings{0, 1, 2, 3, 4, 5};
+    float microphoneLevel{1.0F};
+    bool microphoneMute{};
+    bool microphoneCue{};
+    TempoAnalysisSource analysisSource{TempoAnalysisSource::master};
 };
 
 class StateStore {

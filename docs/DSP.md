@@ -12,5 +12,8 @@ shifting). Slip Roll keeps writing live input while reading its loop; Roll repea
 region. Vinyl Brake decelerates a ring-buffer read head. Helix uses two rotating loop taps and
 cross-channel feedback, distinct from delay/flanger. Pan uses an equal-power synchronized LFO.
 
-Quantization aligns loop/effect operations to the beat model where capture timing is applicable;
-continuous modulation and ordinary parameter smoothing remain sample-continuous.
+Quantization maintains a sample-counted boundary from BPM and the selected division. Enable/release
+requests remain pending until that boundary; disabling Quantize applies them immediately. Roll and
+Slip Roll snapshot a fixed beat-sized region at activation while the live ring continues advancing.
+Slip Roll blends and returns to current live input on release. Continuous modulation and ordinary
+parameter smoothing remain sample-continuous.

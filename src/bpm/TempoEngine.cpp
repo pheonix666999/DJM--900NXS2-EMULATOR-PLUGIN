@@ -6,6 +6,15 @@
 #include <string>
 
 namespace qb {
+TempoEngine::TempoEngine() : juce::Thread("QuadBeat tempo analysis") {
+    startThread(juce::Thread::Priority::low);
+}
+
+TempoEngine::~TempoEngine() {
+    signalThreadShouldExit();
+    stopThread(1000);
+}
+
 std::optional<double> TempoEngine::parseManualBpm(const std::string_view text) {
     double value{};
     const auto* begin = text.data();
@@ -93,6 +102,73 @@ void TempoEngine::analyseEnvelope(const std::span<const float> envelope,
                                ? 0.8 * lastAutoEstimate + 0.2 * corrected
                                : corrected;
         publishForSource(TempoSource::automatic, lastAutoEstimate);
+    }
+}
+
+void TempoEngine::prepareAnalysis(const double sampleRate) noexcept {
+    const auto validRate = std::isfinite(sampleRate) && sampleRate > 0.0 ? sampleRate : 44100.0;
+    samplesPerEnvelope = std::max(1, static_cast<int>(std::round(validRate / 100.0)));
+    envelopeSampleCount = 0;
+    envelopeAccumulator = 0.0F;
+    previousEnvelopeEnergy = 0.0F;
+    queueRead.store(0, std::memory_order_relaxed);
+    queueWrite.store(0, std::memory_order_relaxed);
+    resetGeneration.fetch_add(1, std::memory_order_release);
+}
+
+void TempoEngine::pushStereo(const float* left, const float* right, const int samples) noexcept {
+    if (left == nullptr || right == nullptr || samples <= 0)
+        return;
+    for (int sample = 0; sample < samples; ++sample) {
+        const auto energy = 0.5F * (std::abs(left[sample]) + std::abs(right[sample]));
+        envelopeAccumulator += std::isfinite(energy) ? energy : 0.0F;
+        ++envelopeSampleCount;
+        if (envelopeSampleCount < samplesPerEnvelope)
+            continue;
+        const auto meanEnergy = envelopeAccumulator / static_cast<float>(envelopeSampleCount);
+        const auto onset = std::max(0.0F, meanEnergy - previousEnvelopeEnergy);
+        previousEnvelopeEnergy = meanEnergy;
+        envelopeAccumulator = 0.0F;
+        envelopeSampleCount = 0;
+        const auto write = queueWrite.load(std::memory_order_relaxed);
+        const auto next = (write + 1U) % queueCapacity;
+        if (next == queueRead.load(std::memory_order_acquire))
+            continue;
+        onsetQueue[write] = onset;
+        queueWrite.store(next, std::memory_order_release);
+    }
+}
+
+bool TempoEngine::processPendingAnalysis() noexcept {
+    const auto generation = resetGeneration.load(std::memory_order_acquire);
+    if (generation != handledGeneration) {
+        handledGeneration = generation;
+        analysisFill = 0;
+        lastAutoEstimate = 0.0;
+    }
+    bool analysed = false;
+    auto read = queueRead.load(std::memory_order_relaxed);
+    const auto write = queueWrite.load(std::memory_order_acquire);
+    while (read != write) {
+        analysisWindow[analysisFill++] = onsetQueue[read];
+        read = (read + 1U) % queueCapacity;
+        if (analysisFill == analysisWindow.size()) {
+            analyseEnvelope(analysisWindow, 100.0);
+            constexpr size_t retainedSamples = 400;
+            std::copy(analysisWindow.end() - static_cast<std::ptrdiff_t>(retainedSamples),
+                      analysisWindow.end(), analysisWindow.begin());
+            analysisFill = retainedSamples;
+            analysed = true;
+        }
+    }
+    queueRead.store(read, std::memory_order_release);
+    return analysed;
+}
+
+void TempoEngine::run() {
+    while (!threadShouldExit()) {
+        processPendingAnalysis();
+        wait(20);
     }
 }
 } // namespace qb

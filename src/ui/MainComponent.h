@@ -41,6 +41,7 @@ class MainComponent final : public juce::Component,
     void bindChannel(int index);
     void updateEffect();
     void showSettings();
+    void showMidiEditor();
     void timerCallback() override;
     void layoutChannel(ChannelControls&, juce::Rectangle<int>);
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage&) override;
@@ -57,6 +58,7 @@ class MainComponent final : public juce::Component,
     juce::Label statusLabel;
     juce::TextButton settingsButton{"SETTINGS"};
     juce::TextButton midiButton{"MIDI LEARN"};
+    juce::TextButton midiEditButton{"MIDI EDIT"};
     juce::ComboBox scaleSelector;
     juce::Slider master;
     juce::Slider booth;

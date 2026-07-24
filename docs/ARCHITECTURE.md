@@ -10,3 +10,14 @@ and headphones destinations.
 depth, finite-value clamps, band splitting, and mode-specific state. `TempoEngine`, `BeatClock`,
 `MidiMapper`, and `StateStore` are independent, testable services. The JUCE application owns the
 device manager and UI; state I/O occurs only during lifecycle events outside the audio callback.
+
+Live tempo analysis is single-producer/single-consumer. The audio callback reduces the selected
+Master, CH1–CH4, or microphone source to a 100 Hz positive-energy onset stream and writes it into a
+fixed lock-free ring. A low-priority worker consumes fixed 12-second windows, runs deterministic
+autocorrelation, and publishes BPM/confidence atomically. Queue overflow drops analysis samples
+without ever delaying audio.
+
+Physical device buffers are translated through persisted atomic routing tables into nine logical
+inputs (four stereo pairs and microphone) and six logical outputs. Missing or out-of-range physical
+channels remain silent. Duplicate input mappings intentionally support signal duplication; output
+buses mapped to the same physical destination are summed.

@@ -26,9 +26,19 @@ std::optional<std::pair<std::string, float>> MidiMapper::process(const juce::Mid
             const auto delta = mapping.mode == MidiMode::relativeTwosComplement
                                    ? (raw < 64 ? raw : raw - 128)
                                    : raw - 64;
-            normalised = std::clamp(currentValue + static_cast<float>(delta) / 127.0F, 0.0F, 1.0F);
+            const auto range = mapping.maximum - mapping.minimum;
+            const auto safeRange = std::abs(range) > 1.0e-6F ? range : 1.0F;
+            normalised = std::clamp((currentValue - mapping.minimum) / safeRange, 0.0F, 1.0F);
+            if (mapping.inverted)
+                normalised = 1.0F - normalised;
+            normalised = std::clamp(normalised + static_cast<float>(delta) / 127.0F, 0.0F, 1.0F);
         } else if (!mapping.pickedUp) {
-            mapping.pickedUp = std::abs(normalised - currentValue) <= mapping.pickupTolerance;
+            auto candidateNormalised = mapping.inverted ? 1.0F - normalised : normalised;
+            const auto candidate =
+                mapping.minimum + candidateNormalised * (mapping.maximum - mapping.minimum);
+            const auto tolerance = mapping.pickupTolerance *
+                                   std::max(1.0e-6F, std::abs(mapping.maximum - mapping.minimum));
+            mapping.pickedUp = std::abs(candidate - currentValue) <= tolerance;
             if (!mapping.pickedUp)
                 return std::nullopt;
         }
@@ -52,6 +62,7 @@ juce::var MidiMapper::serialise() const {
         object->setProperty("minimum", mapping.minimum);
         object->setProperty("maximum", mapping.maximum);
         object->setProperty("mode", static_cast<int>(mapping.mode));
+        object->setProperty("pickupTolerance", mapping.pickupTolerance);
         array.add(juce::var(object));
     }
     return array;
@@ -75,6 +86,9 @@ bool MidiMapper::deserialise(const juce::var& value) {
         mapping.maximum = object->getProperty("maximum");
         mapping.mode =
             static_cast<MidiMode>(std::clamp(static_cast<int>(object->getProperty("mode")), 0, 3));
+        if (object->hasProperty("pickupTolerance"))
+            mapping.pickupTolerance = std::clamp(
+                static_cast<float>(object->getProperty("pickupTolerance")), 0.001F, 0.5F);
         loaded.push_back(std::move(mapping));
     }
     entries = std::move(loaded);

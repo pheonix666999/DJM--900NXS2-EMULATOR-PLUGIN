@@ -31,6 +31,7 @@ juce::File QuadBeatApplication::stateFile() const {
 
 void QuadBeatApplication::initialise(const juce::String&) {
     const auto state = StateStore::loadOrDefault(stateFile());
+    mixer.setTempoEngine(&tempo);
     const auto savedDevice = state.audioDeviceXml.empty()
                                  ? std::unique_ptr<juce::XmlElement>{}
                                  : juce::XmlDocument::parse(juce::String(state.audioDeviceXml));

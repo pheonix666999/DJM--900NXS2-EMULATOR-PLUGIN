@@ -7,6 +7,8 @@
 #include <juce_audio_devices/juce_audio_devices.h>
 
 namespace qb {
+class TempoEngine;
+
 struct ChannelParameters {
     std::atomic<float> trim{0.0F};
     std::atomic<float> low{0.0F};
@@ -25,6 +27,15 @@ class MixerEngine final : public juce::AudioIODeviceCallback {
     void prepare(double sampleRate, int maximumBlockSize);
     void process(const juce::AudioBuffer<float>& inputs,
                  juce::AudioBuffer<float>& outputs) noexcept;
+    void processMappedDeviceBlock(const juce::AudioBuffer<float>& physicalInputs,
+                                  juce::AudioBuffer<float>& physicalOutputs) noexcept;
+    void setTempoEngine(TempoEngine* analyser) noexcept { tempoAnalyser = analyser; }
+    void setChannelInputMapping(int logicalChannel, int side, int physicalChannel) noexcept;
+    void setMicrophoneInputMapping(int physicalChannel) noexcept;
+    void setOutputMapping(int logicalOutput, int side, int physicalChannel) noexcept;
+    [[nodiscard]] int channelInputMapping(int logicalChannel, int side) const noexcept;
+    [[nodiscard]] int microphoneInputMapping() const noexcept;
+    [[nodiscard]] int outputMapping(int logicalOutput, int side) const noexcept;
 
     void audioDeviceAboutToStart(juce::AudioIODevice* device) override;
     void audioDeviceStopped() override;
@@ -41,6 +52,10 @@ class MixerEngine final : public juce::AudioIODeviceCallback {
     std::atomic<float> crossfader{};
     std::atomic<CrossfaderCurve> crossfaderCurve{CrossfaderCurve::constantPower};
     std::atomic<EffectBus> effectBus{EffectBus::master};
+    std::atomic<TempoAnalysisSource> analysisSource{TempoAnalysisSource::master};
+    std::atomic<float> microphoneLevel{1.0F};
+    std::atomic<bool> microphoneMute{};
+    std::atomic<bool> microphoneCue{};
     EffectRack effectRack;
 
     [[nodiscard]] float channelPeak(int index, int side) const noexcept;
@@ -55,6 +70,9 @@ class MixerEngine final : public juce::AudioIODeviceCallback {
                         juce::AudioBuffer<float>& output) noexcept;
     std::pair<float, float> crossfaderGains() const noexcept;
     void applyEffect(juce::AudioBuffer<float>& bus) noexcept;
+    void publishTempoAnalysis(int samples) noexcept;
+    void mapPhysicalInputs(const juce::AudioBuffer<float>& physicalInputs, int samples) noexcept;
+    void mapLogicalOutputs(juce::AudioBuffer<float>& physicalOutputs, int samples) noexcept;
     static float safe(float value) noexcept;
     static float decibels(float normalised, float range) noexcept;
 
@@ -66,7 +84,13 @@ class MixerEngine final : public juce::AudioIODeviceCallback {
     juce::AudioBuffer<float> thruBus;
     juce::AudioBuffer<float> cueBus;
     juce::AudioBuffer<float> masterBus;
+    juce::AudioBuffer<float> microphoneBus;
     juce::AudioBuffer<float> callbackInput;
+    juce::AudioBuffer<float> callbackOutput;
+    std::array<std::atomic<int>, channelCount * 2> inputMappings;
+    std::atomic<int> microphoneMapping{-1};
+    std::array<std::atomic<int>, 6> outputMappings;
+    TempoEngine* tempoAnalyser{};
     std::array<std::array<SplitState, 2>, channelCount> eqStates{};
     std::array<std::array<std::atomic<float>, 2>, channelCount> peaks{};
     std::array<std::atomic<float>, 2> masterPeaks{};

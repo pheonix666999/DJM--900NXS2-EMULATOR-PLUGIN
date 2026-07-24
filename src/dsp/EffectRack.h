@@ -14,6 +14,7 @@ struct EffectParameters {
     double bpm{120.0};
     int division{5};
     bool enabled{};
+    bool quantize{};
     bool low{true};
     bool mid{true};
     bool high{true};
@@ -36,6 +37,7 @@ class EffectRack {
     };
 
     float readDelay(int channel, float delaySamples) const noexcept;
+    float readAt(int channel, float position) const noexcept;
     void writeDelay(float left, float right) noexcept;
     void processWet(float left, float right, float& wetLeft, float& wetRight,
                     const EffectParameters& p) noexcept;
@@ -48,6 +50,7 @@ class EffectRack {
     std::atomic<double> bpm{120.0};
     std::atomic<int> division{5};
     std::atomic<bool> enabled{};
+    std::atomic<bool> quantized{};
     std::atomic<unsigned> bands{7U};
     double rate{44100.0};
     int maximumBlock{2048};
@@ -64,6 +67,12 @@ class EffectRack {
     float gate{};
     float brakeRead{};
     float brakeSpeed{1.0F};
+    float loopCaptureStart{};
+    float loopPhase{};
+    double samplesToQuantizeBoundary{};
+    bool activeEnabled{};
+    bool pendingEnabled{};
+    bool hasPendingEnable{};
     bool wasEnabled{};
 };
 } // namespace qb

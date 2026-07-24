@@ -8,6 +8,7 @@
 #include <iostream>
 #include <limits>
 #include <string>
+#include <thread>
 
 namespace {
 int failures{};
@@ -59,6 +60,29 @@ void testBeatAndTempo() {
         detector.analyseEnvelope(envelope, envelopeRate);
         expect(std::abs(detector.bpm() - target) < 4.0, "automatic BPM " + std::to_string(target));
     }
+}
+
+void testLiveTempoAnalysis() {
+    constexpr double sampleRate = 48000.0;
+    constexpr int blockSize = 256;
+    constexpr int totalSamples = static_cast<int>(sampleRate * 12.0);
+    constexpr int clickInterval = static_cast<int>(sampleRate * 0.5);
+    qb::TempoEngine tempo;
+    tempo.prepareAnalysis(sampleRate);
+    juce::AudioBuffer<float> block(2, blockSize);
+    for (int position = 0; position < totalSamples; position += blockSize) {
+        block.clear();
+        for (int sample = 0; sample < blockSize && position + sample < totalSamples; ++sample)
+            if ((position + sample) % clickInterval < 32) {
+                block.setSample(0, sample, 1.0F);
+                block.setSample(1, sample, 1.0F);
+            }
+        tempo.pushStereo(block.getReadPointer(0), block.getReadPointer(1), blockSize);
+    }
+    for (int attempt = 0; attempt < 100 && tempo.confidence() == 0.0; ++attempt)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    expect(tempo.confidence() > 0.08, "live onset queue produces confidence");
+    expect(std::abs(tempo.bpm() - 120.0) < 2.0, "live onset queue detects 120 BPM");
 }
 
 void testEffects() {
@@ -113,6 +137,46 @@ void testEffects() {
            "NaN infinity protection");
 }
 
+void testQuantizedActivation() {
+    qb::EffectRack rack;
+    rack.prepare(48000.0, 512);
+    qb::EffectParameters parameters;
+    parameters.type = qb::EffectType::trans;
+    parameters.depth = 1.0F;
+    parameters.enabled = false;
+    parameters.quantize = true;
+    parameters.bpm = 120.0;
+    parameters.division = 5;
+    rack.setParameters(parameters);
+    juce::AudioBuffer<float> block(2, 512);
+    juce::AudioBuffer<float> original(2, 512);
+    const auto fill = [&] {
+        for (int channel = 0; channel < 2; ++channel)
+            for (int sample = 0; sample < block.getNumSamples(); ++sample)
+                block.setSample(channel, sample,
+                                0.2F * std::sin(static_cast<float>(sample) * 0.13F));
+        original.makeCopyOf(block);
+    };
+    fill();
+    rack.process(block);
+    parameters.enabled = true;
+    rack.setParameters(parameters);
+    float beforeBoundaryDifference{};
+    for (int pass = 0; pass < 40; ++pass) {
+        fill();
+        rack.process(block);
+        beforeBoundaryDifference += difference(block, original);
+    }
+    expect(beforeBoundaryDifference < 0.01F, "quantized effect waits for beat boundary");
+    float afterBoundaryDifference{};
+    for (int pass = 0; pass < 10; ++pass) {
+        fill();
+        rack.process(block);
+        afterBoundaryDifference += difference(block, original);
+    }
+    expect(afterBoundaryDifference > 0.1F, "quantized effect starts on beat boundary");
+}
+
 void testMixer() {
     qb::MixerEngine mixer;
     mixer.prepare(48000.0, 512);
@@ -148,14 +212,74 @@ void testMixer() {
     expect(std::abs(outputs.getSample(0, 0)) < 1.0e-3F, "isolator full kill");
 }
 
+void testPhysicalRoutingAndMicrophone() {
+    qb::MixerEngine mixer;
+    mixer.prepare(48000.0, 256);
+    for (int channel = 0; channel < qb::channelCount; ++channel)
+        for (int side = 0; side < 2; ++side)
+            mixer.setChannelInputMapping(channel, side, -1);
+    mixer.setChannelInputMapping(0, 0, 8);
+    mixer.setChannelInputMapping(0, 1, 9);
+    mixer.setMicrophoneInputMapping(7);
+    mixer.setOutputMapping(0, 0, 4);
+    mixer.setOutputMapping(0, 1, 5);
+    mixer.setOutputMapping(1, 0, -1);
+    mixer.setOutputMapping(1, 1, -1);
+    mixer.setOutputMapping(2, 0, -1);
+    mixer.setOutputMapping(2, 1, -1);
+    juce::AudioBuffer<float> physicalInputs(10, 256);
+    juce::AudioBuffer<float> physicalOutputs(6, 256);
+    physicalInputs.clear();
+    physicalInputs.setSample(8, 0, 1.0F);
+    physicalInputs.setSample(9, 0, 0.5F);
+    physicalInputs.setSample(7, 0, 0.25F);
+    mixer.processMappedDeviceBlock(physicalInputs, physicalOutputs);
+    expect(std::abs(physicalOutputs.getSample(0, 0)) < 1.0e-5F,
+           "unmapped physical output remains silent");
+    expect(std::abs(physicalOutputs.getSample(4, 0) - 1.0F) < 0.03F,
+           "mapped master left includes microphone bus");
+    expect(std::abs(physicalOutputs.getSample(5, 0) - 0.6F) < 0.03F,
+           "mapped master right includes mono microphone");
+    mixer.microphoneMute.store(true);
+    mixer.processMappedDeviceBlock(physicalInputs, physicalOutputs);
+    expect(std::abs(physicalOutputs.getSample(4, 0) - 0.8F) < 0.03F,
+           "microphone mute removes microphone bus");
+
+    std::array<float, 256> callbackLeft{};
+    std::array<float, 256> callbackRight{};
+    std::array<float, 256> callbackOutputLeft{};
+    std::array<float, 256> callbackOutputRight{};
+    callbackLeft[0] = 1.0F;
+    callbackRight[0] = 0.5F;
+    std::array<const float*, 10> callbackInputs{};
+    callbackInputs[8] = callbackLeft.data();
+    callbackInputs[9] = callbackRight.data();
+    std::array<float*, 6> callbackOutputs{};
+    callbackOutputs[4] = callbackOutputLeft.data();
+    callbackOutputs[5] = callbackOutputRight.data();
+    mixer.audioDeviceIOCallbackWithContext(
+        callbackInputs.data(), static_cast<int>(callbackInputs.size()), callbackOutputs.data(),
+        static_cast<int>(callbackOutputs.size()), 256, {});
+    expect(std::abs(callbackOutputLeft[0] - 0.8F) < 0.03F &&
+               std::abs(callbackOutputRight[0] - 0.4F) < 0.03F,
+           "device callback tolerates inactive channel pointers");
+}
+
 void testStateAndMidi() {
     qb::AppState state;
     state.effect = qb::EffectType::helix;
     state.channels[2].mute = true;
+    state.inputMappings[8] = 6;
+    state.outputMappings[4] = -1;
+    state.microphoneLevel = 1.4F;
+    state.analysisSource = qb::TempoAnalysisSource::ch3;
     const auto encoded = qb::StateStore::toVar(state);
     const auto decoded = qb::StateStore::fromVar(encoded);
     expect(decoded.has_value() && decoded->effect == qb::EffectType::helix &&
-               decoded->channels[2].mute,
+               decoded->channels[2].mute && decoded->inputMappings[8] == 6 &&
+               decoded->outputMappings[4] == -1 &&
+               std::abs(decoded->microphoneLevel - 1.4F) < 0.001F &&
+               decoded->analysisSource == qb::TempoAnalysisSource::ch3,
            "state round trip");
     expect(!qb::StateStore::fromVar(juce::JSON::parse("{ broken")), "corrupt state recovery");
     qb::MidiMapper mapper;
@@ -173,6 +297,28 @@ void testStateAndMidi() {
     expect(restored.deserialise(mapper.serialise()) && restored.mappings().size() == 1,
            "MIDI mapping serialization");
     mapping.pickupTolerance = 0.01F;
+    mapping.inverted = true;
+    mapping.minimum = 0.2F;
+    mapping.maximum = 0.9F;
+    mapping.mode = qb::MidiMode::relativeTwosComplement;
+    mapper.setMappings({mapping});
+    qb::MidiMapper edited;
+    expect(edited.deserialise(mapper.serialise()) &&
+               edited.mappings()[0].mode == qb::MidiMode::relativeTwosComplement &&
+               edited.mappings()[0].inverted &&
+               std::abs(edited.mappings()[0].pickupTolerance - 0.01F) < 0.001F,
+           "MIDI editor fields serialize");
+    mapping.mode = qb::MidiMode::absolute;
+    mapping.inverted = true;
+    mapping.pickupTolerance = 1.0F;
+    mapper.setMappings({mapping});
+    const auto inverted = mapper.process(juce::MidiMessage::controllerEvent(1, 7, 127), 0.5F);
+    expect(inverted.has_value() && std::abs(inverted->second - 0.2F) < 0.01F,
+           "MIDI inverted custom range");
+    mapping.inverted = false;
+    mapping.minimum = 0.0F;
+    mapping.maximum = 1.0F;
+    mapping.pickupTolerance = 0.01F;
     mapper.setMappings({mapping});
     expect(!mapper.process(juce::MidiMessage::controllerEvent(1, 7, 0), 0.8F),
            "MIDI soft takeover");
@@ -181,8 +327,11 @@ void testStateAndMidi() {
 
 int main() {
     testBeatAndTempo();
+    testLiveTempoAnalysis();
     testEffects();
+    testQuantizedActivation();
     testMixer();
+    testPhysicalRoutingAndMicrophone();
     testStateAndMidi();
     std::cout << "QuadBeat FX validation summary: " << checks << " checks, " << failures
               << " failures\n";

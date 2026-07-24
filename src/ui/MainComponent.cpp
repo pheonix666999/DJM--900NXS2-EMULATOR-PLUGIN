@@ -1,5 +1,7 @@
 #include "ui/MainComponent.h"
 #include "dsp/BeatClock.h"
+#include "ui/MidiMappingEditor.h"
+#include "ui/SettingsComponent.h"
 #include <chrono>
 
 namespace qb {
@@ -23,6 +25,7 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     addAndMakeVisible(statusLabel);
     addAndMakeVisible(settingsButton);
     addAndMakeVisible(midiButton);
+    addAndMakeVisible(midiEditButton);
     scaleSelector.addItemList({"75%", "100%", "125%", "150%", "200%"}, 1);
     scaleSelector.setSelectedId(2);
     scaleSelector.setTooltip("Interface scale");
@@ -39,6 +42,7 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
                                          : "MIDI learn cancelled",
                             juce::dontSendNotification);
     };
+    midiEditButton.onClick = [this] { showMidiEditor(); };
     midiDevices = juce::MidiInput::getAvailableDevices();
     for (const auto& device : midiDevices)
         deviceManager.addMidiInputDeviceCallback(device.identifier, this);
@@ -131,12 +135,12 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     display.setFont(juce::FontOptions(18.0F, juce::Font::bold));
     addAndMakeVisible(display);
     beatLeft.onClick = [this] {
-        lastLearnTarget = "beatDivision";
+        lastLearnTarget = "beatPrevious";
         selectedDivision = BeatClock::previousDivision(selectedDivision);
         updateEffect();
     };
     beatRight.onClick = [this] {
-        lastLearnTarget = "beatDivision";
+        lastLearnTarget = "beatNext";
         selectedDivision = BeatClock::nextDivision(selectedDivision);
         updateEffect();
     };
@@ -163,6 +167,7 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     midButton.setToggleState(true, juce::dontSendNotification);
     highButton.setToggleState(true, juce::dontSendNotification);
     autoButton.onClick = [this] {
+        lastLearnTarget = "tempoSource";
         tempoEngine.setSource(autoButton.getToggleState() ? TempoSource::automatic
                                                           : TempoSource::manual);
         updateEffect();
@@ -180,8 +185,22 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         lastLearnTarget = "quantize";
         quantized = quantizeButton.getToggleState();
     };
-    lowButton.onClick = midButton.onClick = highButton.onClick = [this] {
-        lastLearnTarget = "fxBands";
+    lowButton.onClick = [this] {
+        lastLearnTarget = "fxLow";
+        if (!lowButton.getToggleState() && !midButton.getToggleState() &&
+            !highButton.getToggleState())
+            midButton.setToggleState(true, juce::dontSendNotification);
+        updateEffect();
+    };
+    midButton.onClick = [this] {
+        lastLearnTarget = "fxMid";
+        if (!lowButton.getToggleState() && !midButton.getToggleState() &&
+            !highButton.getToggleState())
+            midButton.setToggleState(true, juce::dontSendNotification);
+        updateEffect();
+    };
+    highButton.onClick = [this] {
+        lastLearnTarget = "fxHigh";
         if (!lowButton.getToggleState() && !midButton.getToggleState() &&
             !highButton.getToggleState())
             midButton.setToggleState(true, juce::dontSendNotification);
@@ -264,6 +283,7 @@ void MainComponent::updateEffect() {
     parameters.bpm = tempoEngine.bpm();
     parameters.division = selectedDivision;
     parameters.enabled = depth.getValue() > -0.99;
+    parameters.quantize = quantized;
     parameters.low = lowButton.getToggleState();
     parameters.mid = midButton.getToggleState();
     parameters.high = highButton.getToggleState();
@@ -274,8 +294,11 @@ void MainComponent::updateEffect() {
     const auto source = tempoEngine.source() == TempoSource::automatic ? "AUTO"
                         : tempoEngine.source() == TempoSource::manual  ? "MANUAL"
                                                                        : "TAP";
+    const auto confidence = tempoEngine.source() == TempoSource::automatic
+                                ? "  " + juce::String(tempoEngine.confidence() * 100.0, 0) + "%"
+                                : juce::String{};
     display.setText(effectSelector.getText() + "\n" + juce::String(tempoEngine.bpm(), 1) +
-                        " BPM  " + source + "  " +
+                        " BPM  " + source + confidence + "  " +
                         juce::String(beatLabels[static_cast<size_t>(selectedDivision)].data(),
                                      beatLabels[static_cast<size_t>(selectedDivision)].size()),
                     juce::dontSendNotification);
@@ -325,6 +348,7 @@ void MainComponent::resized() {
     productLabel.setBounds(header.removeFromLeft(230));
     settingsButton.setBounds(header.removeFromRight(100).reduced(2));
     midiButton.setBounds(header.removeFromRight(110).reduced(2));
+    midiEditButton.setBounds(header.removeFromRight(100).reduced(2));
     scaleSelector.setBounds(header.removeFromRight(82).reduced(2));
     statusLabel.setBounds(header);
     auto footer = bounds.removeFromBottom(58);
@@ -396,9 +420,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
 }
 
 void MainComponent::showSettings() {
-    auto* selector =
-        new juce::AudioDeviceSelectorComponent(deviceManager, 0, 9, 2, 6, true, true, true, false);
-    selector->setSize(680, 560);
+    auto* selector = new SettingsComponent(engine, deviceManager);
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector);
     options.dialogTitle = "QuadBeat FX Settings";
@@ -406,6 +428,18 @@ void MainComponent::showSettings() {
     options.escapeKeyTriggersCloseButton = true;
     options.useNativeTitleBar = true;
     options.resizable = true;
+    options.launchAsync();
+}
+
+void MainComponent::showMidiEditor() {
+    auto* editor = new MidiMappingEditor(midiMapper);
+    juce::DialogWindow::LaunchOptions options;
+    options.content.setOwned(editor);
+    options.dialogTitle = "QuadBeat FX MIDI Mappings";
+    options.dialogBackgroundColour = QuadBeatLookAndFeel::panel();
+    options.escapeKeyTriggersCloseButton = true;
+    options.useNativeTitleBar = true;
+    options.resizable = false;
     options.launchAsync();
 }
 
@@ -428,7 +462,9 @@ void MainComponent::handleMidiOnMessageThread(const juce::MidiMessage message) {
         mapping.number = mapping.note ? message.getNoteNumber() : message.getControllerNumber();
         mapping.mode = mapping.note || lastLearnTarget.find("cue") != std::string::npos ||
                                lastLearnTarget.find("mute") != std::string::npos ||
-                               lastLearnTarget == "tap" || lastLearnTarget == "quantize"
+                               lastLearnTarget == "tap" || lastLearnTarget == "quantize" ||
+                               lastLearnTarget == "beatPrevious" || lastLearnTarget == "beatNext" ||
+                               lastLearnTarget.starts_with("fx")
                            ? MidiMode::button
                            : MidiMode::absolute;
         auto mappings = midiMapper.mappings();
@@ -480,6 +516,14 @@ float MainComponent::parameterValue(const std::string& id) const {
         return static_cast<float>(selectedDivision) / 7.0F;
     if (id == "quantize")
         return quantized ? 1.0F : 0.0F;
+    if (id == "fxLow")
+        return lowButton.getToggleState() ? 1.0F : 0.0F;
+    if (id == "fxMid")
+        return midButton.getToggleState() ? 1.0F : 0.0F;
+    if (id == "fxHigh")
+        return highButton.getToggleState() ? 1.0F : 0.0F;
+    if (id == "tempoSource")
+        return static_cast<float>(tempoEngine.source()) / 2.0F;
     for (int index = 0; index < channelCount; ++index) {
         const auto prefix = "ch" + std::to_string(index + 1) + ".";
         if (!id.starts_with(prefix))
@@ -534,7 +578,22 @@ void MainComponent::setParameterValue(const std::string& id, const float value) 
         tapButton.triggerClick();
     else if (id == "quantize")
         quantizeButton.setToggleState(normalised > 0.5F, juce::sendNotification);
-    else {
+    else if (id == "fxLow")
+        lowButton.setToggleState(normalised > 0.5F, juce::sendNotification);
+    else if (id == "fxMid")
+        midButton.setToggleState(normalised > 0.5F, juce::sendNotification);
+    else if (id == "fxHigh")
+        highButton.setToggleState(normalised > 0.5F, juce::sendNotification);
+    else if (id == "beatPrevious" && normalised > 0.5F)
+        beatLeft.triggerClick();
+    else if (id == "beatNext" && normalised > 0.5F)
+        beatRight.triggerClick();
+    else if (id == "tempoSource") {
+        const auto source = static_cast<TempoSource>(
+            std::clamp(static_cast<int>(std::round(normalised * 2.0F)), 0, 2));
+        tempoEngine.setSource(source);
+        autoButton.setToggleState(source == TempoSource::automatic, juce::dontSendNotification);
+    } else {
         for (int index = 0; index < channelCount; ++index) {
             const auto prefix = "ch" + std::to_string(index + 1) + ".";
             if (!id.starts_with(prefix))
@@ -600,6 +659,19 @@ AppState MainComponent::captureState() const {
     state.uiScale =
         scales[static_cast<size_t>(std::clamp(scaleSelector.getSelectedItemIndex(), 0, 4))];
     state.midiMappings = midiMapper.serialise();
+    for (int channel = 0; channel < channelCount; ++channel)
+        for (int side = 0; side < 2; ++side)
+            state.inputMappings[static_cast<size_t>(channel * 2 + side)] =
+                engine.channelInputMapping(channel, side);
+    state.inputMappings[8] = engine.microphoneInputMapping();
+    for (int output = 0; output < 3; ++output)
+        for (int side = 0; side < 2; ++side)
+            state.outputMappings[static_cast<size_t>(output * 2 + side)] =
+                engine.outputMapping(output, side);
+    state.microphoneLevel = engine.microphoneLevel.load();
+    state.microphoneMute = engine.microphoneMute.load();
+    state.microphoneCue = engine.microphoneCue.load();
+    state.analysisSource = engine.analysisSource.load();
     return state;
 }
 
@@ -642,6 +714,19 @@ void MainComponent::restoreState(const AppState& state) {
             nearestScale = index;
     scaleSelector.setSelectedItemIndex(nearestScale);
     midiMapper.deserialise(state.midiMappings);
+    for (int channel = 0; channel < channelCount; ++channel)
+        for (int side = 0; side < 2; ++side)
+            engine.setChannelInputMapping(
+                channel, side, state.inputMappings[static_cast<size_t>(channel * 2 + side)]);
+    engine.setMicrophoneInputMapping(state.inputMappings[8]);
+    for (int output = 0; output < 3; ++output)
+        for (int side = 0; side < 2; ++side)
+            engine.setOutputMapping(output, side,
+                                    state.outputMappings[static_cast<size_t>(output * 2 + side)]);
+    engine.microphoneLevel.store(state.microphoneLevel);
+    engine.microphoneMute.store(state.microphoneMute);
+    engine.microphoneCue.store(state.microphoneCue);
+    engine.analysisSource.store(state.analysisSource);
     updateEffect();
 }
 } // namespace qb

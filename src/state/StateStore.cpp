@@ -38,6 +38,18 @@ juce::var StateStore::toVar(const AppState& state) {
     root->setProperty("windowHeight", state.windowHeight);
     root->setProperty("audioDeviceXml", juce::String(state.audioDeviceXml));
     root->setProperty("midiMappings", state.midiMappings);
+    juce::Array<juce::var> inputMappings;
+    for (const auto mapping : state.inputMappings)
+        inputMappings.add(mapping);
+    root->setProperty("inputMappings", inputMappings);
+    juce::Array<juce::var> outputMappings;
+    for (const auto mapping : state.outputMappings)
+        outputMappings.add(mapping);
+    root->setProperty("outputMappings", outputMappings);
+    root->setProperty("microphoneLevel", state.microphoneLevel);
+    root->setProperty("microphoneMute", state.microphoneMute);
+    root->setProperty("microphoneCue", state.microphoneCue);
+    root->setProperty("analysisSource", enumValue(state.analysisSource));
     juce::Array<juce::var> channels;
     for (const auto& channel : state.channels) {
         auto* item = new juce::DynamicObject();
@@ -93,6 +105,29 @@ std::optional<AppState> StateStore::fromVar(const juce::var& value) {
     state.windowHeight = std::clamp(static_cast<int>(root->getProperty("windowHeight")), 700, 2160);
     state.audioDeviceXml = root->getProperty("audioDeviceXml").toString().toStdString();
     state.midiMappings = root->getProperty("midiMappings");
+    const auto inputMappings = root->getProperty("inputMappings");
+    if (inputMappings.isArray())
+        for (int index = 0; index < std::min(static_cast<int>(state.inputMappings.size()),
+                                             inputMappings.getArray()->size());
+             ++index)
+            state.inputMappings[static_cast<size_t>(index)] =
+                std::max(-1, static_cast<int>(inputMappings[index]));
+    const auto outputMappings = root->getProperty("outputMappings");
+    if (outputMappings.isArray())
+        for (int index = 0; index < std::min(static_cast<int>(state.outputMappings.size()),
+                                             outputMappings.getArray()->size());
+             ++index)
+            state.outputMappings[static_cast<size_t>(index)] =
+                std::max(-1, static_cast<int>(outputMappings[index]));
+    if (root->hasProperty("microphoneLevel"))
+        state.microphoneLevel = safeFloat(root->getProperty("microphoneLevel"), 1.0F, 0.0F, 2.0F);
+    if (root->hasProperty("microphoneMute"))
+        state.microphoneMute = root->getProperty("microphoneMute");
+    if (root->hasProperty("microphoneCue"))
+        state.microphoneCue = root->getProperty("microphoneCue");
+    if (root->hasProperty("analysisSource"))
+        state.analysisSource = static_cast<TempoAnalysisSource>(
+            std::clamp(static_cast<int>(root->getProperty("analysisSource")), 0, 5));
     const auto channels = root->getProperty("channels");
     if (channels.isArray()) {
         for (int i = 0; i < std::min(channelCount, channels.getArray()->size()); ++i) {

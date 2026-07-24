@@ -13,12 +13,14 @@ or distributed with the application.
 
 - Four stereo channels with trim, EQ/isolator, faders, mute, cue, metering, and A/B/Thru routing
 - Master, booth, and headphones buses with graceful degradation on smaller interfaces
-- Automatic, manual, and TAP tempo sources; sample-accurate beat clock and eight divisions
+- Automatic live background analysis, manual, and TAP tempo sources; sample-accurate beat clock
+  and eight divisions
 - Delay, Echo, Ping Pong, Spiral, Reverb, Trans, Filter, Flanger, Phaser, Pitch, Slip Roll, Roll,
   Vinyl Brake, Helix, and Pan
 - LOW/MID/HIGH effect-band selection and logical-bus assignment
 - ASIO (optional) and WASAPI on Windows; CoreAudio on macOS
-- Persistent versioned state and serializable MIDI mappings with scaling and soft takeover
+- Persistent physical routing/microphone state and editable MIDI mappings with scaling, relative
+  modes, inversion, deletion, and soft takeover
 
 Current limitations: unsigned builds may trigger operating-system warnings; hardware routing,
 relative encoder variations, and long-duration performance require the manual validation matrix.
@@ -41,11 +43,11 @@ before distributing a build.
 
 ## Using the application
 
-Open **Settings** to choose the audio driver, device, sample rate, buffer size, physical channels,
-MIDI inputs, and diagnostics. Interfaces with only two outputs can run the Master bus; unavailable
-Booth and Headphones destinations are not accessed. Choose an effect and bus, select one or more
-frequency bands, choose a beat on the X-PAD, then raise LEVEL/DEPTH. Press `T` to tap tempo and use
-the arrow keys to navigate beat divisions.
+Open **Settings** to choose the audio driver, device, sample rate, buffer size, physical role
+mappings, microphone controls, automatic-BPM source, MIDI inputs, and diagnostics. Interfaces with
+only two outputs can run the Master bus; unavailable Booth and Headphones destinations are not
+accessed. Choose an effect and bus, select one or more frequency bands, choose a beat on the X-PAD,
+then raise LEVEL/DEPTH. Press `T` to tap tempo and use the arrow keys to navigate beat divisions.
 
 GitHub Actions builds and tests both platforms. Open a workflow run's **Artifacts** section to
 download `QuadBeatFX-Windows-x64` or `QuadBeatFX-macOS-Universal`. CI artifacts and releases are

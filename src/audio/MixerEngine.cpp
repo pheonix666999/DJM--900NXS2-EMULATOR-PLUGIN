@@ -1,4 +1,5 @@
 #include "audio/MixerEngine.h"
+#include "bpm/TempoEngine.h"
 #include <algorithm>
 #include <cmath>
 #include <numbers>
@@ -9,6 +10,10 @@ constexpr float pi = std::numbers::pi_v<float>;
 }
 
 MixerEngine::MixerEngine() {
+    for (int index = 0; index < channelCount * 2; ++index)
+        inputMappings[static_cast<size_t>(index)].store(index);
+    for (int index = 0; index < static_cast<int>(outputMappings.size()); ++index)
+        outputMappings[static_cast<size_t>(index)].store(index);
     for (auto& channel : peaks)
         for (auto& peak : channel)
             peak.store(0.0F);
@@ -21,11 +26,14 @@ void MixerEngine::prepare(const double sampleRate, const int maximumBlockSize) {
     maxBlock = std::clamp(maximumBlockSize, 32, 8192);
     for (auto& buffer : channelBuffers)
         buffer.setSize(2, maxBlock, false, true, false);
-    for (auto* buffer : {&busA, &busB, &thruBus, &cueBus, &masterBus})
+    for (auto* buffer : {&busA, &busB, &thruBus, &cueBus, &masterBus, &microphoneBus})
         buffer->setSize(2, maxBlock, false, true, false);
-    callbackInput.setSize(channelCount * 2, maxBlock, false, true, false);
+    callbackInput.setSize(channelCount * 2 + 1, maxBlock, false, true, false);
+    callbackOutput.setSize(6, maxBlock, false, true, false);
     eqStates = {};
     effectRack.prepare(rate, maxBlock);
+    if (tempoAnalyser != nullptr)
+        tempoAnalyser->prepareAnalysis(rate);
 }
 
 float MixerEngine::safe(const float value) noexcept {
@@ -98,7 +106,7 @@ void MixerEngine::process(const juce::AudioBuffer<float>& inputs,
     if (samples <= 0)
         return;
     outputs.clear();
-    for (auto* bus : {&busA, &busB, &thruBus, &cueBus, &masterBus}) {
+    for (auto* bus : {&busA, &busB, &thruBus, &cueBus, &masterBus, &microphoneBus}) {
         bus->setSize(2, samples, true, false, true);
         bus->clear();
     }
@@ -122,6 +130,22 @@ void MixerEngine::process(const juce::AudioBuffer<float>& inputs,
             for (int side = 0; side < 2; ++side)
                 cueBus.addFrom(side, 0, channel, side, 0, samples);
     }
+    const auto microphoneSource = channelCount * 2;
+    const auto microphoneGain =
+        microphoneMute.load() ? 0.0F : std::clamp(microphoneLevel.load(), 0.0F, 2.0F);
+    if (microphoneSource < inputs.getNumChannels()) {
+        for (int side = 0; side < 2; ++side) {
+            microphoneBus.copyFrom(side, 0, inputs, microphoneSource, 0, samples);
+            microphoneBus.applyGain(side, 0, samples, microphoneGain);
+        }
+    }
+    if (effectBus.load() == EffectBus::mic)
+        applyEffect(microphoneBus);
+    for (int side = 0; side < 2; ++side)
+        thruBus.addFrom(side, 0, microphoneBus, side, 0, samples);
+    if (microphoneCue.load())
+        for (int side = 0; side < 2; ++side)
+            cueBus.addFrom(side, 0, microphoneBus, side, 0, samples);
     if (effectBus.load() == EffectBus::crossfaderA)
         applyEffect(busA);
     if (effectBus.load() == EffectBus::crossfaderB)
@@ -132,6 +156,7 @@ void MixerEngine::process(const juce::AudioBuffer<float>& inputs,
         masterBus.addFrom(side, 0, busA, side, 0, samples, gainA);
         masterBus.addFrom(side, 0, busB, side, 0, samples, gainB);
     }
+    publishTempoAnalysis(samples);
     if (effectBus.load() == EffectBus::master)
         applyEffect(masterBus);
     const auto masterGain = std::clamp(masterLevel.load(), 0.0F, 1.5F);
@@ -160,6 +185,87 @@ void MixerEngine::process(const juce::AudioBuffer<float>& inputs,
     }
 }
 
+void MixerEngine::publishTempoAnalysis(const int samples) noexcept {
+    if (tempoAnalyser == nullptr || samples <= 0)
+        return;
+    const juce::AudioBuffer<float>* source = &masterBus;
+    const auto selected = analysisSource.load();
+    if (selected >= TempoAnalysisSource::ch1 && selected <= TempoAnalysisSource::ch4) {
+        const auto index = static_cast<int>(selected) - static_cast<int>(TempoAnalysisSource::ch1);
+        source = &channelBuffers[static_cast<size_t>(index)];
+    } else if (selected == TempoAnalysisSource::microphone) {
+        source = &microphoneBus;
+    }
+    tempoAnalyser->pushStereo(source->getReadPointer(0), source->getReadPointer(1), samples);
+}
+
+void MixerEngine::setChannelInputMapping(const int logicalChannel, const int side,
+                                         const int physicalChannel) noexcept {
+    if (logicalChannel < 0 || logicalChannel >= channelCount || side < 0 || side > 1)
+        return;
+    inputMappings[static_cast<size_t>(logicalChannel * 2 + side)].store(physicalChannel);
+}
+
+void MixerEngine::setMicrophoneInputMapping(const int physicalChannel) noexcept {
+    microphoneMapping.store(physicalChannel);
+}
+
+void MixerEngine::setOutputMapping(const int logicalOutput, const int side,
+                                   const int physicalChannel) noexcept {
+    if (logicalOutput < 0 || logicalOutput >= 3 || side < 0 || side > 1)
+        return;
+    outputMappings[static_cast<size_t>(logicalOutput * 2 + side)].store(physicalChannel);
+}
+
+int MixerEngine::channelInputMapping(const int logicalChannel, const int side) const noexcept {
+    if (logicalChannel < 0 || logicalChannel >= channelCount || side < 0 || side > 1)
+        return -1;
+    return inputMappings[static_cast<size_t>(logicalChannel * 2 + side)].load();
+}
+
+int MixerEngine::microphoneInputMapping() const noexcept { return microphoneMapping.load(); }
+
+int MixerEngine::outputMapping(const int logicalOutput, const int side) const noexcept {
+    if (logicalOutput < 0 || logicalOutput >= 3 || side < 0 || side > 1)
+        return -1;
+    return outputMappings[static_cast<size_t>(logicalOutput * 2 + side)].load();
+}
+
+void MixerEngine::mapPhysicalInputs(const juce::AudioBuffer<float>& physicalInputs,
+                                    const int samples) noexcept {
+    callbackInput.clear();
+    for (int logical = 0; logical < channelCount * 2; ++logical) {
+        const auto physical = inputMappings[static_cast<size_t>(logical)].load();
+        if (physical >= 0 && physical < physicalInputs.getNumChannels())
+            callbackInput.copyFrom(logical, 0, physicalInputs, physical, 0, samples);
+    }
+    const auto physicalMic = microphoneMapping.load();
+    if (physicalMic >= 0 && physicalMic < physicalInputs.getNumChannels())
+        callbackInput.copyFrom(channelCount * 2, 0, physicalInputs, physicalMic, 0, samples);
+}
+
+void MixerEngine::mapLogicalOutputs(juce::AudioBuffer<float>& physicalOutputs,
+                                    const int samples) noexcept {
+    physicalOutputs.clear();
+    for (int logical = 0; logical < 6; ++logical) {
+        const auto physical = outputMappings[static_cast<size_t>(logical)].load();
+        if (physical >= 0 && physical < physicalOutputs.getNumChannels())
+            physicalOutputs.addFrom(physical, 0, callbackOutput, logical, 0, samples);
+    }
+}
+
+void MixerEngine::processMappedDeviceBlock(const juce::AudioBuffer<float>& physicalInputs,
+                                           juce::AudioBuffer<float>& physicalOutputs) noexcept {
+    const auto samples =
+        std::min({physicalInputs.getNumSamples(), physicalOutputs.getNumSamples(), maxBlock});
+    if (samples <= 0)
+        return;
+    callbackOutput.setSize(6, samples, true, false, true);
+    mapPhysicalInputs(physicalInputs, samples);
+    process(callbackInput, callbackOutput);
+    mapLogicalOutputs(physicalOutputs, samples);
+}
+
 void MixerEngine::audioDeviceAboutToStart(juce::AudioIODevice* device) {
     if (device != nullptr)
         prepare(device->getCurrentSampleRate(), device->getCurrentBufferSizeSamples());
@@ -176,14 +282,28 @@ void MixerEngine::audioDeviceIOCallbackWithContext(const float* const* inputChan
                                                    const int numOutputChannels,
                                                    const int numSamples,
                                                    const juce::AudioIODeviceCallbackContext&) {
+    const auto samples = std::min(numSamples, maxBlock);
     callbackInput.clear();
-    const auto samples = std::min(numSamples, callbackInput.getNumSamples());
-    for (int channel = 0; channel < std::min(numInputChannels, callbackInput.getNumChannels());
-         ++channel)
-        if (inputChannelData[channel] != nullptr)
-            callbackInput.copyFrom(channel, 0, inputChannelData[channel], samples);
-    juce::AudioBuffer<float> output(outputChannelData, numOutputChannels, numSamples);
-    process(callbackInput, output);
+    for (int logical = 0; logical < channelCount * 2; ++logical) {
+        const auto physical = inputMappings[static_cast<size_t>(logical)].load();
+        if (physical >= 0 && physical < numInputChannels && inputChannelData[physical] != nullptr)
+            callbackInput.copyFrom(logical, 0, inputChannelData[physical], samples);
+    }
+    const auto physicalMic = microphoneMapping.load();
+    if (physicalMic >= 0 && physicalMic < numInputChannels &&
+        inputChannelData[physicalMic] != nullptr)
+        callbackInput.copyFrom(channelCount * 2, 0, inputChannelData[physicalMic], samples);
+    callbackOutput.setSize(6, samples, true, false, true);
+    process(callbackInput, callbackOutput);
+    for (int physical = 0; physical < numOutputChannels; ++physical)
+        if (outputChannelData[physical] != nullptr)
+            juce::FloatVectorOperations::clear(outputChannelData[physical], numSamples);
+    for (int logical = 0; logical < 6; ++logical) {
+        const auto physical = outputMappings[static_cast<size_t>(logical)].load();
+        if (physical >= 0 && physical < numOutputChannels && outputChannelData[physical] != nullptr)
+            juce::FloatVectorOperations::add(outputChannelData[physical],
+                                             callbackOutput.getReadPointer(logical), samples);
+    }
 }
 
 float MixerEngine::channelPeak(const int index, const int side) const noexcept {
