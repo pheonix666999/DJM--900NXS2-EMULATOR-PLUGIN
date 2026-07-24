@@ -51,7 +51,7 @@ jobs:
       - name: Build
         run: cmake --build --preset ci-windows --parallel 4
       - name: Test
-        run: ctest --preset test-windows --output-on-failure --output-junit out/ci-windows/test-results.xml
+        run: ctest --preset test-windows --output-on-failure --output-junit test-results.xml
       - name: Package
         shell: pwsh
         run: |
@@ -74,6 +74,7 @@ jobs:
         with:
           name: QuadBeatFX-Test-Results-Windows
           path: out/ci-windows/test-results.xml
+          if-no-files-found: error
           retention-days: 14
 
   macos:
@@ -93,7 +94,7 @@ jobs:
       - name: Build
         run: cmake --build --preset ci-macos
       - name: Test
-        run: ctest --preset test-macos --output-on-failure --output-junit out/ci-macos/test-results.xml
+        run: ctest --preset test-macos --output-on-failure --output-junit test-results.xml
       - name: Verify and package
         run: |
           APP="$(find out/ci-macos -name 'QuadBeat FX.app' -type d | head -1)"
@@ -117,4 +118,5 @@ jobs:
         with:
           name: QuadBeatFX-Test-Results-macOS
           path: out/ci-macos/test-results.xml
+          if-no-files-found: error
           retention-days: 14
