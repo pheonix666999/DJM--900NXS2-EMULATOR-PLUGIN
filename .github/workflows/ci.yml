@@ -49,14 +49,14 @@ jobs:
       - name: Configure
         run: cmake --preset ci-windows
       - name: Build
-        run: cmake --build --preset ci-windows
+        run: cmake --build --preset ci-windows --parallel 4
       - name: Test
         run: ctest --preset test-windows --output-on-failure --output-junit out/ci-windows/test-results.xml
       - name: Package
         shell: pwsh
         run: |
-          $exe = Get-ChildItem out/ci-windows -Recurse -Filter QuadBeatFX.exe | Select-Object -First 1
-          if (-not $exe) { throw "QuadBeatFX.exe was not produced" }
+          $exe = Get-ChildItem out/ci-windows -Recurse -Filter 'QuadBeat FX.exe' | Select-Object -First 1
+          if (-not $exe) { throw "'QuadBeat FX.exe' was not produced" }
           New-Item -ItemType Directory -Force artifacts/QuadBeatFX | Out-Null
           Copy-Item $exe.FullName artifacts/QuadBeatFX/
           Copy-Item README.md,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
