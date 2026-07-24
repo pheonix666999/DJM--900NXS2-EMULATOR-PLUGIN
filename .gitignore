@@ -147,6 +147,7 @@ GeneratedCode/
 /packages/
 /package/
 /release-output/
+/_CPack_Packages/
 *.msi
 *.msix
 *.appx
