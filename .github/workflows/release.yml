@@ -59,7 +59,7 @@ jobs:
           ditto -c -k --keepParent "$APP" release/QuadBeatFX-macOS-Universal.zip
           shasum -a 256 release/QuadBeatFX-macOS-Universal.zip \
             > release/QuadBeatFX-macOS-Universal.zip.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: QuadBeatFX-${{ matrix.label }}
           path: release/*
