@@ -10,6 +10,11 @@
 6. TIME changes the primary duration/rate/pitch behavior. LEVEL/DEPTH uses a smoothed equal-power
    dry/wet/intensity transition.
 
+The console surface is arranged as four channel strips, a dedicated monitor strip, and a tall Beat
+FX strip. The Beat FX workflow runs from the OLED and two-row X-PAD at the top through tempo,
+frequency, effect, assignment, TIME, and LEVEL/DEPTH controls. Effect and assignment selectors
+support vertical drag, mouse wheel, arrow keys, and keyboard focus.
+
 Choose the automatic BPM analysis source in Settings. Live onset extraction runs outside the audio
 worker; the display updates with the smoothed estimate. With Quantize enabled, effect and loop
 requests wait for the selected beat boundary. Use MIDI LEARN for quick assignment and MIDI EDIT for

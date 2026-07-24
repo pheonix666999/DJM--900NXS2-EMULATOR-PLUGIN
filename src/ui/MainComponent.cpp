@@ -12,10 +12,14 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     setLookAndFeel(&lookAndFeel);
     setWantsKeyboardFocus(true);
     productLabel.setText("QUADBEAT FX", juce::dontSendNotification);
-    productLabel.setFont(juce::FontOptions(24.0F, juce::Font::bold));
+    productLabel.setFont(juce::FontOptions(20.0F, juce::Font::bold));
     productLabel.setColour(juce::Label::textColourId, QuadBeatLookAndFeel::accent());
     addAndMakeVisible(productLabel);
     addAndMakeVisible(statusLabel);
+    statusLabel.setFont(juce::FontOptions(11.0F));
+    settingsButton.setComponentID("utility");
+    midiButton.setComponentID("utility");
+    midiEditButton.setComponentID("utility");
     addAndMakeVisible(settingsButton);
     addAndMakeVisible(midiButton);
     addAndMakeVisible(midiEditButton);
@@ -43,11 +47,16 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         auto& controls = channelControls[static_cast<size_t>(index)];
         controls.title.setText("CHANNEL " + juce::String(index + 1), juce::dontSendNotification);
         controls.title.setJustificationType(juce::Justification::centred);
+        controls.title.setFont(juce::FontOptions(12.0F, juce::Font::bold));
         addAndMakeVisible(controls.title);
         configureKnob(controls.trim, " dB");
         configureKnob(controls.high);
         configureKnob(controls.mid);
         configureKnob(controls.low);
+        controls.trim.setName("TRIM");
+        controls.high.setName("HI");
+        controls.mid.setName("MID");
+        controls.low.setName("LOW");
         controls.fader.setSliderStyle(juce::Slider::LinearVertical);
         controls.fader.setRange(0.0, 1.0, 0.001);
         controls.fader.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -56,6 +65,8 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
             addAndMakeVisible(*control);
         controls.cue.setClickingTogglesState(true);
         controls.mute.setClickingTogglesState(true);
+        controls.cue.setComponentID("cue");
+        controls.mute.setComponentID("mute");
         addAndMakeVisible(controls.cue);
         addAndMakeVisible(controls.mute);
         controls.assignment.addItemList({"A", "B", "THRU"}, 1);
@@ -69,6 +80,10 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         slider->setRange(0.0, 1.0, 0.001);
         addAndMakeVisible(*slider);
     }
+    master.setName("MASTER");
+    booth.setName("BOOTH MONITOR");
+    headphones.setName("PHONES LEVEL");
+    cueMix.setName("CUE / MASTER");
     crossfader.setSliderStyle(juce::Slider::LinearHorizontal);
     crossfader.setRange(-1.0, 1.0, 0.001);
     crossfader.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
@@ -97,12 +112,14 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     for (const auto name : effectNames)
         effectSelector.addItem(juce::String(name.data(), name.size()),
                                effectSelector.getNumItems() + 1);
+    effectSelector.setName("BEAT FX");
     effectSelector.setSelectedId(2);
     effectSelector.onChange = [this] {
         lastLearnTarget = "effect";
         updateEffect();
     };
     busSelector.addItemList({"MIC", "CH1", "CH2", "CH3", "CH4", "XFADE A", "XFADE B", "MASTER"}, 1);
+    busSelector.setName("FX ASSIGN");
     busSelector.setSelectedId(8);
     busSelector.onChange = [this] {
         lastLearnTarget = "effectBus";
@@ -112,6 +129,10 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     addAndMakeVisible(busSelector);
     configureKnob(time);
     configureKnob(depth);
+    time.setName("TIME");
+    depth.setName("LEVEL / DEPTH");
+    time.setComponentID("effectKnob");
+    depth.setComponentID("effectKnob");
     time.onValueChange = [this] {
         lastLearnTarget = "effectTime";
         updateEffect();
@@ -123,9 +144,9 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     addAndMakeVisible(time);
     addAndMakeVisible(depth);
     display.setJustificationType(juce::Justification::centred);
-    display.setColour(juce::Label::backgroundColourId, juce::Colour(0xff061917));
-    display.setColour(juce::Label::textColourId, QuadBeatLookAndFeel::accent());
-    display.setFont(juce::FontOptions(18.0F, juce::Font::bold));
+    display.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+    display.setColour(juce::Label::textColourId, QuadBeatLookAndFeel::oled());
+    display.setFont(juce::FontOptions(15.0F, juce::Font::bold));
     addAndMakeVisible(display);
     beatLeft.onClick = [this] {
         lastLearnTarget = "beatPrevious";
@@ -139,9 +160,12 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     };
     addAndMakeVisible(beatLeft);
     addAndMakeVisible(beatRight);
+    beatLeft.setComponentID("beatArrow");
+    beatRight.setComponentID("beatArrow");
     for (size_t index = 0; index < pads.size(); ++index) {
         pads[index].setButtonText(juce::String(beatLabels[index].data(), beatLabels[index].size()));
         pads[index].setClickingTogglesState(false);
+        pads[index].setComponentID("pad");
         pads[index].onClick = [this, index] {
             lastLearnTarget = "beatDivision";
             selectedDivision = static_cast<int>(index);
@@ -154,6 +178,13 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         button->setClickingTogglesState(true);
         addAndMakeVisible(*button);
     }
+    tapButton.setClickingTogglesState(false);
+    autoButton.setComponentID("autoTap");
+    tapButton.setComponentID("tap");
+    quantizeButton.setComponentID("quantize");
+    lowButton.setComponentID("frequency");
+    midButton.setComponentID("frequency");
+    highButton.setComponentID("frequency");
     autoButton.setToggleState(true, juce::dontSendNotification);
     quantizeButton.setToggleState(true, juce::dontSendNotification);
     lowButton.setToggleState(true, juce::dontSendNotification);
@@ -219,9 +250,10 @@ MainComponent::~MainComponent() {
 void MainComponent::configureKnob(juce::Slider& slider, const juce::String suffix) {
     slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
     slider.setRange(-1.0, 1.0, 0.001);
-    slider.setTextBoxStyle(juce::Slider::TextBoxBelow, false, 54, 18);
+    slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
     slider.setTextValueSuffix(suffix);
     slider.setDoubleClickReturnValue(true, 0.0);
+    slider.setTooltip(slider.getName());
 }
 
 void MainComponent::bindChannel(const int index) {
@@ -291,94 +323,12 @@ void MainComponent::updateEffect() {
                                 ? "  " + juce::String(tempoEngine.confidence() * 100.0, 0) + "%"
                                 : juce::String{};
     display.setText(effectSelector.getText() + "\n" + juce::String(tempoEngine.bpm(), 1) +
-                        " BPM  " + source + confidence + "  " +
+                        " BPM  " + source + confidence + "\nBEAT " +
                         juce::String(beatLabels[static_cast<size_t>(selectedDivision)].data(),
-                                     beatLabels[static_cast<size_t>(selectedDivision)].size()),
+                                     beatLabels[static_cast<size_t>(selectedDivision)].size()) +
+                        "   TIME " + juce::String((time.getValue() + 1.0) * 50.0, 0) + "   DEPTH " +
+                        juce::String((depth.getValue() + 1.0) * 50.0, 0),
                     juce::dontSendNotification);
-}
-
-void MainComponent::paint(juce::Graphics& graphics) {
-    graphics.fillAll(QuadBeatLookAndFeel::background());
-    const auto channelArea = getLocalBounds().reduced(12).withTrimmedTop(58);
-    graphics.setColour(juce::Colour(0xff26333f));
-    for (int index = 0; index < channelCount; ++index) {
-        const auto x = 12 + index * ((getWidth() * 58 / 100 - 18) / 4);
-        graphics.drawRoundedRectangle(
-            juce::Rectangle<float>(static_cast<float>(x), 70.0F,
-                                   static_cast<float>((getWidth() * 58 / 100 - 24) / 4 - 4),
-                                   static_cast<float>(getHeight() - 135)),
-            8.0F, 1.0F);
-    }
-    const auto meterX = getWidth() * 58 / 100 - 20;
-    for (int channel = 0; channel < channelCount; ++channel) {
-        const auto x = 20 + channel * ((meterX - 20) / 4);
-        const auto height = static_cast<float>(getHeight() - 160) *
-                            channelControls[static_cast<size_t>(channel)].meter;
-        graphics.setColour(QuadBeatLookAndFeel::accent());
-        graphics.fillRect(static_cast<float>(x + 8), static_cast<float>(getHeight() - 84) - height,
-                          3.0F, height);
-    }
-    juce::ignoreUnused(channelArea);
-}
-
-void MainComponent::layoutChannel(ChannelControls& channel, juce::Rectangle<int> area) {
-    channel.title.setBounds(area.removeFromTop(28));
-    channel.trim.setBounds(area.removeFromTop(78));
-    channel.high.setBounds(area.removeFromTop(78));
-    channel.mid.setBounds(area.removeFromTop(78));
-    channel.low.setBounds(area.removeFromTop(78));
-    channel.eqMode.setBounds(area.removeFromTop(28).reduced(4, 2));
-    auto buttons = area.removeFromTop(34);
-    channel.cue.setBounds(buttons.removeFromLeft(buttons.getWidth() / 2).reduced(3));
-    channel.mute.setBounds(buttons.reduced(3));
-    channel.fader.setBounds(area.removeFromTop(std::max(100, area.getHeight() - 44)).reduced(8));
-    channel.assignment.setBounds(area.removeFromTop(30).reduced(4, 2));
-}
-
-void MainComponent::resized() {
-    auto bounds = getLocalBounds().reduced(12);
-    auto header = bounds.removeFromTop(46);
-    productLabel.setBounds(header.removeFromLeft(230));
-    settingsButton.setBounds(header.removeFromRight(100).reduced(2));
-    midiButton.setBounds(header.removeFromRight(110).reduced(2));
-    midiEditButton.setBounds(header.removeFromRight(100).reduced(2));
-    scaleSelector.setBounds(header.removeFromRight(82).reduced(2));
-    statusLabel.setBounds(header);
-    auto footer = bounds.removeFromBottom(58);
-    crossfader.setBounds(footer.removeFromLeft(getWidth() * 58 / 100).reduced(20, 5));
-    auto mixerArea = bounds.removeFromLeft(getWidth() * 58 / 100);
-    const auto stripWidth = mixerArea.getWidth() / channelCount;
-    for (auto& channel : channelControls)
-        layoutChannel(channel, mixerArea.removeFromLeft(stripWidth).reduced(5));
-    auto fxArea = bounds.reduced(10, 2);
-    display.setBounds(fxArea.removeFromTop(72));
-    auto padArea = fxArea.removeFromTop(88).reduced(0, 5);
-    for (int index = 0; index < 8; ++index)
-        pads[static_cast<size_t>(index)].setBounds(
-            padArea.removeFromLeft(padArea.getWidth() / (8 - index)).reduced(2));
-    auto arrows = fxArea.removeFromTop(38);
-    beatLeft.setBounds(arrows.removeFromLeft(50).reduced(2));
-    beatRight.setBounds(arrows.removeFromRight(50).reduced(2));
-    autoButton.setBounds(arrows.removeFromLeft(arrows.getWidth() / 3).reduced(2));
-    tapButton.setBounds(arrows.removeFromLeft(arrows.getWidth() / 2).reduced(2));
-    quantizeButton.setBounds(arrows.reduced(2));
-    auto bandsArea = fxArea.removeFromTop(42);
-    lowButton.setBounds(bandsArea.removeFromLeft(bandsArea.getWidth() / 3).reduced(3));
-    midButton.setBounds(bandsArea.removeFromLeft(bandsArea.getWidth() / 2).reduced(3));
-    highButton.setBounds(bandsArea.reduced(3));
-    effectSelector.setBounds(fxArea.removeFromTop(34).reduced(3));
-    busSelector.setBounds(fxArea.removeFromTop(34).reduced(3));
-    auto knobArea = fxArea.removeFromTop(110);
-    time.setBounds(knobArea.removeFromLeft(knobArea.getWidth() / 2).reduced(8));
-    depth.setBounds(knobArea.reduced(8));
-    auto monitor = fxArea;
-    master.setName("MASTER");
-    booth.setName("BOOTH");
-    headphones.setName("PHONES");
-    cueMix.setName("CUE MIX");
-    const auto monitorWidth = monitor.getWidth() / 4;
-    for (auto* knob : {&master, &booth, &headphones, &cueMix})
-        knob->setBounds(monitor.removeFromLeft(monitorWidth).reduced(4));
 }
 
 void MainComponent::timerCallback() {

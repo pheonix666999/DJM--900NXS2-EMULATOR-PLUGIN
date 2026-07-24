@@ -26,4 +26,4 @@ ctest --preset test-macos --output-on-failure
 ```
 
 The macOS presets set deployment target 12 and `CMAKE_OSX_ARCHITECTURES=arm64;x86_64`. All build
-trees live under `out/`. The minimum application window is 1100×700.
+trees live under `out/`. The minimum application window is 1200×820.

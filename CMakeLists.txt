@@ -51,8 +51,10 @@ juce_add_gui_app(QuadBeatFX
     MICROPHONE_PERMISSION_ENABLED TRUE)
 target_sources(QuadBeatFX PRIVATE
     src/app/Main.cpp src/app/QuadBeatApplication.cpp src/app/QuadBeatApplication.h
+    src/ui/HardwareRotarySelector.cpp src/ui/HardwareRotarySelector.h
     src/ui/MidiMappingEditor.cpp src/ui/MidiMappingEditor.h
-    src/ui/MainComponent.cpp src/ui/MainComponent.h src/ui/QuadBeatLookAndFeel.cpp
+    src/ui/MainComponent.cpp src/ui/MainComponent.h src/ui/MainComponentLayout.cpp
+    src/ui/QuadBeatLookAndFeel.cpp
     src/ui/QuadBeatLookAndFeel.h src/ui/SettingsComponent.cpp src/ui/SettingsComponent.h)
 target_link_libraries(QuadBeatFX PRIVATE QuadBeatCore juce::juce_audio_utils juce::juce_gui_extra)
 target_compile_definitions(QuadBeatFX PRIVATE JUCE_APPLICATION_NAME_STRING="${QB_PRODUCT_NAME}"

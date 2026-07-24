@@ -4,6 +4,7 @@
 #include "bpm/TempoEngine.h"
 #include "midi/MidiMapper.h"
 #include "state/StateStore.h"
+#include "ui/HardwareRotarySelector.h"
 #include "ui/QuadBeatLookAndFeel.h"
 #include <array>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -65,8 +66,8 @@ class MainComponent final : public juce::Component,
     juce::Slider headphones;
     juce::Slider cueMix;
     juce::Slider crossfader;
-    juce::ComboBox effectSelector;
-    juce::ComboBox busSelector;
+    HardwareRotarySelector effectSelector;
+    HardwareRotarySelector busSelector;
     juce::Slider time;
     juce::Slider depth;
     juce::Label display;
@@ -86,5 +87,9 @@ class MainComponent final : public juce::Component,
     bool midiLearning{};
     juce::Array<juce::MidiDeviceInfo> midiDevices;
     std::unique_ptr<juce::DialogWindow> settingsWindow;
+    std::array<juce::Rectangle<int>, channelCount> channelBounds;
+    juce::Rectangle<int> monitorBounds;
+    juce::Rectangle<int> fxBounds;
+    juce::Rectangle<int> crossfaderBounds;
 };
 } // namespace qb

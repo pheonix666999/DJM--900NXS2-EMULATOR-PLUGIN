@@ -14,10 +14,15 @@ class QuadBeatLookAndFeel final : public juce::LookAndFeel_V4 {
     void drawLinearSlider(juce::Graphics&, int x, int y, int width, int height,
                           float sliderPosition, float minSliderPosition, float maxSliderPosition,
                           juce::Slider::SliderStyle, juce::Slider&) override;
+    void drawComboBox(juce::Graphics&, int width, int height, bool isButtonDown, int buttonX,
+                      int buttonY, int buttonWidth, int buttonHeight, juce::ComboBox&) override;
+    juce::Font getComboBoxFont(juce::ComboBox&) override;
+    juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
 
-    static juce::Colour background() { return juce::Colour(0xff10151c); }
-    static juce::Colour panel() { return juce::Colour(0xff19222c); }
-    static juce::Colour accent() { return juce::Colour(0xff20d7c2); }
-    static juce::Colour warm() { return juce::Colour(0xffffb547); }
+    static juce::Colour background() { return juce::Colour(0xff07090b); }
+    static juce::Colour panel() { return juce::Colour(0xff111417); }
+    static juce::Colour accent() { return juce::Colour(0xff27a7ff); }
+    static juce::Colour warm() { return juce::Colour(0xffff8a32); }
+    static juce::Colour oled() { return juce::Colour(0xff9de4dc); }
 };
 } // namespace qb
