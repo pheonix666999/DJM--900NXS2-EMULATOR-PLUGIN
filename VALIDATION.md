@@ -1,6 +1,7 @@
 # Validation report
 
-Validated source commit: `54531dc` (with foundations `f698719` and implementation `f1083d7`).
+Validated source commit: `548a50a` (with foundations `f698719` and initial implementation
+`f1083d7`).
 
 ## Local evidence
 
@@ -22,7 +23,7 @@ Results:
 - Windows Release application: PASS
 - Windows Release `QuadBeatFXTests`: PASS
 - CTest: 1/1 target passed
-- Test harness: 205 checks, 0 failures
+- Test harness: 216 checks, 0 failures
 - Four-second GUI process smoke test: PASS
 - C++ formatting and whitespace validation: PASS
 - CPack ZIP: PASS; exactly `QuadBeat FX.exe`, `README.md`, `LICENSE.md`, and
@@ -37,8 +38,9 @@ takeover.
 
 ## Hosted CI and artifacts
 
-No Git remote is configured and GitHub CLI is unavailable in this workspace, so GitHub Actions
-could not be pushed or observed. There are no run URLs or run IDs to report. The workflows define:
+The repository is connected to `pheonix666999/DJM--900NXS2-EMULATOR-PLUGIN`. GitHub Actions for the
+production-completion branch are pending at the time of this local validation record. The
+workflows define:
 
 - `QuadBeatFX-Windows-x64`
 - `QuadBeatFX-macOS-Universal`
@@ -57,19 +59,8 @@ recovery, physical relative encoders, latency/dropouts, sleep/wake, and long-dur
 The builds are unsigned and not notarized. Commercial distribution remains subject to JUCE and
 ASIO licensing review; no signing identities or credentials are present.
 
-## Known implementation limitations
-
-- Automatic BPM estimation is deterministic and tested, but the application does not yet feed a
-  background onset envelope from live mixer audio into the estimator.
-- The current device screen selects active physical channels; explicit per-role remapping beyond
-  the documented default stereo pairs needs a dedicated routing matrix.
-- The MIC effect assignment is represented in state/UI but requires a dedicated microphone-bus
-  path before it produces audio.
-- Quantize state persists, but effect activation/capture scheduling is not yet deferred to beat
-  boundaries for every applicable effect.
-- MIDI Learn creates and persists mappings, including pickup/scaling models; a dedicated
-  mapping-list editor for deletion, inversion, custom ranges, and relative-mode selection is not
-  yet exposed in the UI.
-
-These limitations mean the repository is a compiled, tested functional implementation, but not yet
-at the specification's full commercial release definition of done.
+The production-gap validation adds live background onset analysis, selected analysis sources,
+explicit physical role mapping, the microphone bus, quantized activation/capture, fixed Roll/Slip
+Roll capture, and editable MIDI ranges/inversion/channels/relative modes/pickup/deletion. Remaining
+release limitations are the hosted macOS result, physical hardware matrix, licensing review, and
+signing/notarization status described above.
