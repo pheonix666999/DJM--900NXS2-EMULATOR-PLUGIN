@@ -23,6 +23,15 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     addAndMakeVisible(statusLabel);
     addAndMakeVisible(settingsButton);
     addAndMakeVisible(midiButton);
+    scaleSelector.addItemList({"75%", "100%", "125%", "150%", "200%"}, 1);
+    scaleSelector.setSelectedId(2);
+    scaleSelector.setTooltip("Interface scale");
+    scaleSelector.onChange = [this] {
+        constexpr std::array<float, 5> scales{0.75F, 1.0F, 1.25F, 1.5F, 2.0F};
+        const auto index = std::clamp(scaleSelector.getSelectedItemIndex(), 0, 4);
+        juce::Desktop::getInstance().setGlobalScaleFactor(scales[static_cast<size_t>(index)]);
+    };
+    addAndMakeVisible(scaleSelector);
     settingsButton.onClick = [this] { showSettings(); };
     midiButton.onClick = [this] {
         midiLearning = !midiLearning;
@@ -316,6 +325,7 @@ void MainComponent::resized() {
     productLabel.setBounds(header.removeFromLeft(230));
     settingsButton.setBounds(header.removeFromRight(100).reduced(2));
     midiButton.setBounds(header.removeFromRight(110).reduced(2));
+    scaleSelector.setBounds(header.removeFromRight(82).reduced(2));
     statusLabel.setBounds(header);
     auto footer = bounds.removeFromBottom(58);
     crossfader.setBounds(footer.removeFromLeft(getWidth() * 58 / 100).reduced(20, 5));
@@ -586,6 +596,9 @@ AppState MainComponent::captureState() const {
     state.quantize = quantized;
     state.tempoSource = tempoEngine.source();
     state.manualBpm = tempoEngine.bpm();
+    constexpr std::array<double, 5> scales{0.75, 1.0, 1.25, 1.5, 2.0};
+    state.uiScale =
+        scales[static_cast<size_t>(std::clamp(scaleSelector.getSelectedItemIndex(), 0, 4))];
     state.midiMappings = midiMapper.serialise();
     return state;
 }
@@ -621,6 +634,13 @@ void MainComponent::restoreState(const AppState& state) {
     quantizeButton.setToggleState(quantized, juce::dontSendNotification);
     tempoEngine.setSource(state.tempoSource);
     tempoEngine.setManualBpm(state.manualBpm);
+    constexpr std::array<double, 5> scales{0.75, 1.0, 1.25, 1.5, 2.0};
+    auto nearestScale = 0;
+    for (int index = 1; index < static_cast<int>(scales.size()); ++index)
+        if (std::abs(scales[static_cast<size_t>(index)] - state.uiScale) <
+            std::abs(scales[static_cast<size_t>(nearestScale)] - state.uiScale))
+            nearestScale = index;
+    scaleSelector.setSelectedItemIndex(nearestScale);
     midiMapper.deserialise(state.midiMappings);
     updateEffect();
 }

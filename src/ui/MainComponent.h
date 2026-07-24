@@ -57,6 +57,7 @@ class MainComponent final : public juce::Component,
     juce::Label statusLabel;
     juce::TextButton settingsButton{"SETTINGS"};
     juce::TextButton midiButton{"MIDI LEARN"};
+    juce::ComboBox scaleSelector;
     juce::Slider master;
     juce::Slider booth;
     juce::Slider headphones;
