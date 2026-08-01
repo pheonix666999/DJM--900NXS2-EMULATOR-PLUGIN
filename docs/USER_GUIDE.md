@@ -11,7 +11,10 @@
    dry/wet/intensity transition.
 
 The console surface is arranged as four channel strips, a dedicated monitor strip, and a tall Beat
-FX strip. The Beat FX workflow runs from the OLED and two-row X-PAD at the top through tempo,
+FX strip. Its touchscreen-style display shows the current effect, BPM source, adjacent and selected
+beat divisions, effect-aware TIME value, and LEVEL/DEPTH percentage. Select any of the eight beat
+cells directly with the mouse, or focus the display and use the left/right arrow keys; the display,
+X-PAD, and physical-style arrow controls remain synchronized. The workflow continues through tempo,
 frequency, effect, assignment, TIME, and LEVEL/DEPTH controls. Effect and assignment selectors
 support vertical drag, mouse wheel, arrow keys, and keyboard focus.
 

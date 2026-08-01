@@ -187,10 +187,10 @@ void MainComponent::resized() {
     auto fx = fxArea.reduced(11, 7);
     fx.removeFromTop(24);
     const auto panelHeight = fx.getHeight();
-    const auto displayHeight = std::clamp(panelHeight * 11 / 100, 70, 92);
-    const auto padHeight = std::clamp(panelHeight * 11 / 100, 70, 88);
-    const auto effectHeight = std::clamp(panelHeight * 16 / 100, 98, 132);
-    const auto busHeight = std::clamp(panelHeight * 13 / 100, 80, 108);
+    const auto displayHeight = std::clamp(panelHeight * 17 / 100, 125, 165);
+    const auto padHeight = std::clamp(panelHeight * 6 / 100, 42, 54);
+    const auto effectHeight = std::clamp(panelHeight * 13 / 100, 86, 112);
+    const auto busHeight = std::clamp(panelHeight * 10 / 100, 68, 86);
 
     display.setBounds(fx.removeFromTop(displayHeight).reduced(8, 6));
     fx.removeFromTop(17);

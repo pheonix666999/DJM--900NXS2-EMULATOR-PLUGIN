@@ -51,6 +51,7 @@ juce_add_gui_app(QuadBeatFX
     MICROPHONE_PERMISSION_ENABLED TRUE)
 target_sources(QuadBeatFX PRIVATE
     src/app/Main.cpp src/app/QuadBeatApplication.cpp src/app/QuadBeatApplication.h
+    src/ui/BeatFxDisplay.cpp src/ui/BeatFxDisplay.h
     src/ui/HardwareRotarySelector.cpp src/ui/HardwareRotarySelector.h
     src/ui/MidiMappingEditor.cpp src/ui/MidiMappingEditor.h
     src/ui/MainComponent.cpp src/ui/MainComponent.h src/ui/MainComponentLayout.cpp

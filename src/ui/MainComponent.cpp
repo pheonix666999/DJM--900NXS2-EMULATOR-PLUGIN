@@ -143,10 +143,11 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     };
     addAndMakeVisible(time);
     addAndMakeVisible(depth);
-    display.setJustificationType(juce::Justification::centred);
-    display.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
-    display.setColour(juce::Label::textColourId, QuadBeatLookAndFeel::oled());
-    display.setFont(juce::FontOptions(15.0F, juce::Font::bold));
+    display.onDivisionSelected = [this](const int division) {
+        lastLearnTarget = "beatDivision";
+        selectedDivision = division;
+        updateEffect();
+    };
     addAndMakeVisible(display);
     beatLeft.onClick = [this] {
         lastLearnTarget = "beatPrevious";
@@ -316,19 +317,8 @@ void MainComponent::updateEffect() {
     for (size_t index = 0; index < pads.size(); ++index)
         pads[index].setToggleState(static_cast<int>(index) == selectedDivision,
                                    juce::dontSendNotification);
-    const auto source = tempoEngine.source() == TempoSource::automatic ? "AUTO"
-                        : tempoEngine.source() == TempoSource::manual  ? "MANUAL"
-                                                                       : "TAP";
-    const auto confidence = tempoEngine.source() == TempoSource::automatic
-                                ? "  " + juce::String(tempoEngine.confidence() * 100.0, 0) + "%"
-                                : juce::String{};
-    display.setText(effectSelector.getText() + "\n" + juce::String(tempoEngine.bpm(), 1) +
-                        " BPM  " + source + confidence + "\nBEAT " +
-                        juce::String(beatLabels[static_cast<size_t>(selectedDivision)].data(),
-                                     beatLabels[static_cast<size_t>(selectedDivision)].size()) +
-                        "   TIME " + juce::String((time.getValue() + 1.0) * 50.0, 0) + "   DEPTH " +
-                        juce::String((depth.getValue() + 1.0) * 50.0, 0),
-                    juce::dontSendNotification);
+    display.setState(parameters.type, parameters.bpm, tempoEngine.source(),
+                     tempoEngine.confidence(), selectedDivision, parameters.time, parameters.depth);
 }
 
 void MainComponent::timerCallback() {

@@ -4,6 +4,7 @@
 #include "bpm/TempoEngine.h"
 #include "midi/MidiMapper.h"
 #include "state/StateStore.h"
+#include "ui/BeatFxDisplay.h"
 #include "ui/HardwareRotarySelector.h"
 #include "ui/QuadBeatLookAndFeel.h"
 #include <array>
@@ -70,7 +71,7 @@ class MainComponent final : public juce::Component,
     HardwareRotarySelector busSelector;
     juce::Slider time;
     juce::Slider depth;
-    juce::Label display;
+    BeatFxDisplay display;
     juce::TextButton beatLeft{"<"};
     juce::TextButton beatRight{">"};
     std::array<juce::TextButton, 8> pads;
