@@ -100,7 +100,7 @@ void BeatFxDisplay::paint(juce::Graphics& graphics) {
     const auto primaryHeight = content.getHeight();
     auto top = content.removeFromTop(
         std::min(content.getHeight(), std::clamp(primaryHeight * 38 / 100, 20, 42)));
-    auto badge = top.removeFromLeft(std::max(54, top.getWidth() * 19 / 100)).reduced(4, 6);
+    auto badge = top.removeFromLeft(std::max(46, top.getWidth() * 18 / 100)).reduced(3, 5);
     graphics.setColour(source == TempoSource::tap ? juce::Colour(0xff26d967)
                                                   : juce::Colour(0xff81b83c));
     graphics.drawRoundedRectangle(badge.toFloat(), 2.0F, 1.5F);
@@ -108,17 +108,17 @@ void BeatFxDisplay::paint(juce::Graphics& graphics) {
         juce::FontOptions(std::max(10.0F, badge.getHeight() * 0.47F), juce::Font::bold));
     graphics.drawFittedText(sourceText(), badge, juce::Justification::centred, 1);
 
-    auto bpmArea = top.removeFromRight(std::max(105, top.getWidth() * 48 / 100));
+    auto bpmArea = top.removeFromRight(std::max(92, top.getWidth() * 44 / 100));
     graphics.setColour(juce::Colour(0xfff0f0df));
     graphics.setFont(
         juce::FontOptions(std::max(17.0F, bpmArea.getHeight() * 0.62F), juce::Font::bold));
-    graphics.drawFittedText(juce::String(bpm, 1), bpmArea.withTrimmedRight(35),
+    graphics.drawFittedText(juce::String(bpm, 1), bpmArea.withTrimmedRight(28),
                             juce::Justification::centredRight, 1);
-    graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
-    graphics.drawText("BPM", bpmArea.removeFromRight(34), juce::Justification::centredLeft);
+    graphics.setFont(juce::FontOptions(8.0F, juce::Font::bold));
+    graphics.drawText("BPM", bpmArea.removeFromRight(27), juce::Justification::centredLeft);
 
     graphics.setColour(juce::Colour(0xfff3f3e9));
-    graphics.setFont(juce::FontOptions(std::max(19.0F, top.getHeight() * 0.73F), juce::Font::bold));
+    graphics.setFont(juce::FontOptions(std::max(16.0F, top.getHeight() * 0.67F), juce::Font::bold));
     const auto effectIndex = std::min(static_cast<size_t>(effect), effectNames.size() - 1);
     const auto& effectName = effectNames[effectIndex];
     graphics.drawFittedText(juce::String(effectName.data(), effectName.size()), top,

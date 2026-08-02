@@ -10,8 +10,10 @@
 6. TIME changes the primary duration/rate/pitch behavior. LEVEL/DEPTH uses a smoothed equal-power
    dry/wet/intensity transition.
 
-The console surface is arranged as four channel strips, a dedicated monitor strip, and a tall Beat
-FX strip. Its touchscreen-style display shows the current effect, BPM source, adjacent and selected
+The console surface follows a compact hardware-console layout: a microphone/headphones utility strip,
+four dense channel strips, a stereo-metered master section, and a narrow Beat FX strip. The microphone
+level, cue, and mute controls operate the same functional microphone bus configured in Settings.
+The touchscreen-style display shows the current effect, BPM source, adjacent and selected
 beat divisions, effect-aware TIME value, and LEVEL/DEPTH percentage. Select any of the eight beat
 cells directly with the mouse, or focus the display and use the left/right arrow keys; the display,
 X-PAD, and physical-style arrow controls remain synchronized. The workflow continues through tempo,

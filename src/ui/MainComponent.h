@@ -62,6 +62,9 @@ class MainComponent final : public juce::Component,
     juce::TextButton midiButton{"MIDI LEARN"};
     juce::TextButton midiEditButton{"MIDI EDIT"};
     juce::ComboBox scaleSelector;
+    juce::Slider microphone;
+    juce::TextButton microphoneCue{"MIC CUE"};
+    juce::TextButton microphoneMute{"MIC OFF"};
     juce::Slider master;
     juce::Slider booth;
     juce::Slider headphones;
@@ -89,8 +92,11 @@ class MainComponent final : public juce::Component,
     juce::Array<juce::MidiDeviceInfo> midiDevices;
     std::unique_ptr<juce::DialogWindow> settingsWindow;
     std::array<juce::Rectangle<int>, channelCount> channelBounds;
+    juce::Rectangle<int> utilityBounds;
     juce::Rectangle<int> monitorBounds;
+    juce::Rectangle<int> masterMeterBounds;
     juce::Rectangle<int> fxBounds;
     juce::Rectangle<int> crossfaderBounds;
+    std::array<float, 2> masterMeters{};
 };
 } // namespace qb

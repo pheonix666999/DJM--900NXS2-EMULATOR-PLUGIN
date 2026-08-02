@@ -75,6 +75,29 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         addAndMakeVisible(controls.eqMode);
         bindChannel(index);
     }
+    configureKnob(microphone);
+    microphone.setName("MIC LEVEL");
+    microphone.setRange(0.0, 2.0, 0.001);
+    microphone.setDoubleClickReturnValue(true, 1.0);
+    microphone.onValueChange = [this] {
+        lastLearnTarget = "microphoneLevel";
+        engine.microphoneLevel.store(static_cast<float>(microphone.getValue()));
+    };
+    microphoneCue.setClickingTogglesState(true);
+    microphoneMute.setClickingTogglesState(true);
+    microphoneCue.setComponentID("cue");
+    microphoneMute.setComponentID("mute");
+    microphoneCue.onClick = [this] {
+        lastLearnTarget = "mic.cue";
+        engine.microphoneCue.store(microphoneCue.getToggleState());
+    };
+    microphoneMute.onClick = [this] {
+        lastLearnTarget = "mic.mute";
+        engine.microphoneMute.store(microphoneMute.getToggleState());
+    };
+    addAndMakeVisible(microphone);
+    addAndMakeVisible(microphoneCue);
+    addAndMakeVisible(microphoneMute);
     for (auto* slider : {&master, &booth, &headphones, &cueMix}) {
         configureKnob(*slider);
         slider->setRange(0.0, 1.0, 0.001);
@@ -233,6 +256,9 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     };
     time.setValue(0.5);
     depth.setValue(0.5);
+    microphone.setValue(engine.microphoneLevel.load());
+    microphoneCue.setToggleState(engine.microphoneCue.load(), juce::dontSendNotification);
+    microphoneMute.setToggleState(engine.microphoneMute.load(), juce::dontSendNotification);
     master.setValue(0.8);
     booth.setValue(0.7);
     headphones.setValue(0.7);
@@ -327,6 +353,13 @@ void MainComponent::timerCallback() {
         auto& meter = channelControls[static_cast<size_t>(channel)].meter;
         meter = std::max(value, meter * 0.9F);
     }
+    for (int side = 0; side < 2; ++side)
+        masterMeters[static_cast<size_t>(side)] =
+            std::max(engine.masterPeak(side), masterMeters[static_cast<size_t>(side)] * 0.9F);
+    if (!microphone.isMouseButtonDown())
+        microphone.setValue(engine.microphoneLevel.load(), juce::dontSendNotification);
+    microphoneCue.setToggleState(engine.microphoneCue.load(), juce::dontSendNotification);
+    microphoneMute.setToggleState(engine.microphoneMute.load(), juce::dontSendNotification);
     if (auto* device = deviceManager.getCurrentAudioDevice())
         statusLabel.setText(device->getName() + "  |  " +
                                 juce::String(device->getCurrentSampleRate(), 0) + " Hz  |  " +
@@ -427,6 +460,12 @@ void MainComponent::handleMidiOnMessageThread(const juce::MidiMessage message) {
 }
 
 float MainComponent::parameterValue(const std::string& id) const {
+    if (id == "microphoneLevel")
+        return static_cast<float>(microphone.getValue() * 0.5);
+    if (id == "mic.cue")
+        return microphoneCue.getToggleState() ? 1.0F : 0.0F;
+    if (id == "mic.mute")
+        return microphoneMute.getToggleState() ? 1.0F : 0.0F;
     if (id == "master")
         return static_cast<float>(master.getValue());
     if (id == "booth")
@@ -484,7 +523,13 @@ float MainComponent::parameterValue(const std::string& id) const {
 
 void MainComponent::setParameterValue(const std::string& id, const float value) {
     const auto normalised = std::clamp(value, 0.0F, 1.0F);
-    if (id == "master")
+    if (id == "microphoneLevel")
+        microphone.setValue(normalised * 2.0F);
+    else if (id == "mic.cue")
+        microphoneCue.setToggleState(normalised > 0.5F, juce::sendNotification);
+    else if (id == "mic.mute")
+        microphoneMute.setToggleState(normalised > 0.5F, juce::sendNotification);
+    else if (id == "master")
         master.setValue(normalised);
     else if (id == "booth")
         booth.setValue(normalised);
@@ -659,6 +704,9 @@ void MainComponent::restoreState(const AppState& state) {
     engine.microphoneLevel.store(state.microphoneLevel);
     engine.microphoneMute.store(state.microphoneMute);
     engine.microphoneCue.store(state.microphoneCue);
+    microphone.setValue(state.microphoneLevel, juce::dontSendNotification);
+    microphoneMute.setToggleState(state.microphoneMute, juce::dontSendNotification);
+    microphoneCue.setToggleState(state.microphoneCue, juce::dontSendNotification);
     engine.analysisSource.store(state.analysisSource);
     updateEffect();
 }

@@ -12,6 +12,6 @@ relative encoder mode, custom minimum/maximum, inversion, and pickup tolerance. 
 deletes mappings. Custom range and inversion are applied before soft-takeover comparison so pickup
 remains jump-free.
 
-Major mixer, crossfader, monitoring, effect, X-PAD, TAP, quantize, band, TIME, and LEVEL/DEPTH
-controls have stable parameter identities for mapping. Controller behavior varies, so validate
-relative mode and pickup with the hardware checklist.
+Major mixer, microphone level/cue/mute, crossfader, monitoring, effect, X-PAD, TAP, quantize, band,
+TIME, and LEVEL/DEPTH controls have stable parameter identities for mapping. Controller behavior
+varies, so validate relative mode and pickup with the hardware checklist.
