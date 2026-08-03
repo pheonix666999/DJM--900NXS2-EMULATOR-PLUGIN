@@ -1,7 +1,8 @@
 # QuadBeat FX
 
-QuadBeat FX is an original, standalone four-channel DJ mixer and Beat FX desktop application for
-Windows 10/11 x64 and macOS 12+ (Apple Silicon and Intel). It combines independent channel strips,
+QuadBeat FX is an original four-channel DJ mixer and Beat FX application for Windows 10/11 x64 and
+macOS 12+ (Apple Silicon and Intel). It is delivered as both a standalone application and a VST3
+effect. It combines independent channel strips,
 three-band EQ/isolator processing, crossfader routing, cue/booth/master buses, tempo analysis, MIDI
 mapping, and fifteen real-time stereo effects in a scalable dark interface.
 
@@ -19,6 +20,8 @@ or distributed with the application.
   Vinyl Brake, Helix, and Pan
 - LOW/MID/HIGH effect-band selection and logical-bus assignment
 - ASIO (optional) and WASAPI on Windows; CoreAudio on macOS
+- VST3 operation with four stereo channel input buses, a mono microphone bus, and stereo master
+  output; auxiliary buses can be enabled in the host as needed
 - Persistent physical routing/microphone state and editable MIDI mappings with scaling, relative
   modes, inversion, deletion, and soft takeover
 
@@ -38,8 +41,8 @@ ctest --preset test-windows --output-on-failure
 ```
 
 For macOS, substitute `ci-macos` and `test-macos`. The macOS preset produces a Universal
-`arm64;x86_64` app. See [docs/BUILDING.md](docs/BUILDING.md) and [docs/LICENSING.md](docs/LICENSING.md)
-before distributing a build.
+`arm64;x86_64` app and VST3. See [docs/BUILDING.md](docs/BUILDING.md) and
+[docs/LICENSING.md](docs/LICENSING.md) before distributing a build.
 
 ## Using the application
 
@@ -49,6 +52,11 @@ only two outputs can run the Master bus; unavailable Booth and Headphones destin
 accessed. Choose an effect and bus, select one or more frequency bands, choose a beat on the X-PAD,
 then raise LEVEL/DEPTH. Press `T` to tap tempo and use the arrow keys to navigate beat divisions.
 
+For VST3 use, copy the complete `QuadBeat FX.vst3` bundle into the platform VST3 folder, then make
+the host rescan plugins. Channel 1 and Master are active by default. Enable the Channel 2, Channel 3,
+Channel 4, and Microphone input buses in the host when required. The plugin editor keeps all four
+channel strips visible at its minimum supported size of 1200 x 820.
+
 GitHub Actions builds and tests both platforms. Open a workflow run's **Artifacts** section to
 download `QuadBeatFX-Windows-x64` or `QuadBeatFX-macOS-Universal`. CI artifacts and releases are
 unsigned unless explicitly stated.
@@ -57,7 +65,7 @@ unsigned unless explicitly stated.
 
 - `src/audio`, `src/dsp`, `src/bpm`: real-time engine and tempo logic
 - `src/midi`, `src/state`: mapping and persistence
-- `src/ui`, `src/app`: JUCE interface and application lifecycle
+- `src/ui`, `src/app`, `src/plugin`: shared JUCE interface, standalone lifecycle, and VST3 adapter
 - `tests`: hardware-free deterministic validation
 - `docs`: design, use, build, licensing, and hardware validation
 - `external/JUCE`: JUCE 8.0.13 pinned submodule

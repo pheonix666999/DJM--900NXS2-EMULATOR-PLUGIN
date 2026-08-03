@@ -27,3 +27,15 @@ range, inversion, encoder mode, pickup tolerance, channel, and deletion.
 
 Red meter persistence indicates clipping; lower trim or master. If a saved device is unavailable,
 open Settings and choose an available fallback.
+
+## VST3 host operation
+
+Install the complete `QuadBeat FX.vst3` bundle and rescan the host's plugin folders. Insert it as an
+audio effect. The primary stereo input feeds Channel 1 and the stereo output carries Master. The
+host exposes auxiliary stereo input buses for Channels 2-4 and a mono Microphone input bus; enable
+and route those buses in the host when needed. The **HOST I/O** button explains this routing in the
+plugin editor. Device selection remains a standalone-only setting because sample rate, block size,
+and physical I/O are owned by the host while the VST3 is running.
+
+The plugin editor can be resized from 1200 x 820 upward. Its scale selector resizes only the editor,
+not the desktop, and the minimum layout retains all four channel strips.

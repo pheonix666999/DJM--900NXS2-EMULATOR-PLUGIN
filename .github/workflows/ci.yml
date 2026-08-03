@@ -57,8 +57,14 @@ jobs:
         run: |
           $exe = Get-ChildItem out/ci-windows -Recurse -Filter 'QuadBeat FX.exe' | Select-Object -First 1
           if (-not $exe) { throw "'QuadBeat FX.exe' was not produced" }
+          $vst3 = Get-ChildItem out/ci-windows -Recurse -Directory -Filter 'QuadBeat FX.vst3' | Select-Object -First 1
+          if (-not $vst3) { throw "'QuadBeat FX.vst3' was not produced" }
+          if (-not (Test-Path (Join-Path $vst3.FullName 'Contents/x86_64-win/QuadBeat FX.vst3'))) {
+            throw "The Windows VST3 module is incomplete"
+          }
           New-Item -ItemType Directory -Force artifacts/QuadBeatFX | Out-Null
           Copy-Item $exe.FullName artifacts/QuadBeatFX/
+          Copy-Item $vst3.FullName artifacts/QuadBeatFX/ -Recurse
           Copy-Item README.md,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
           Compress-Archive artifacts/QuadBeatFX/* artifacts/QuadBeatFX-Windows-x64.zip
           (Get-FileHash artifacts/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
@@ -98,13 +104,20 @@ jobs:
       - name: Verify and package
         run: |
           APP="$(find out/ci-macos -name 'QuadBeat FX.app' -type d | head -1)"
+          VST3="$(find out/ci-macos -name 'QuadBeat FX.vst3' -type d | head -1)"
           test -n "$APP"
+          test -n "$VST3"
           BIN="$APP/Contents/MacOS/QuadBeat FX"
           lipo -info "$BIN" | grep arm64
           lipo -info "$BIN" | grep x86_64
+          lipo -info "$VST3/Contents/MacOS/QuadBeat FX" | grep arm64
+          lipo -info "$VST3/Contents/MacOS/QuadBeat FX" | grep x86_64
           codesign --force --deep --sign - "$APP"
-          mkdir -p artifacts
-          ditto -c -k --keepParent "$APP" artifacts/QuadBeatFX-macOS-Universal.zip
+          codesign --force --deep --sign - "$VST3"
+          mkdir -p artifacts/QuadBeatFX
+          cp -R "$APP" "$VST3" artifacts/QuadBeatFX/
+          cp README.md LICENSE.md THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
+          ditto -c -k --keepParent artifacts/QuadBeatFX artifacts/QuadBeatFX-macOS-Universal.zip
           shasum -a 256 artifacts/QuadBeatFX-macOS-Universal.zip \
             > artifacts/QuadBeatFX-macOS-Universal.zip.sha256
       - uses: actions/upload-artifact@v4

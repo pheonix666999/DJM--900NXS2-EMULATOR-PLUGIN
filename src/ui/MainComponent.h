@@ -8,6 +8,7 @@
 #include "ui/HardwareRotarySelector.h"
 #include "ui/QuadBeatLookAndFeel.h"
 #include <array>
+#include <functional>
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
@@ -16,13 +17,16 @@ class MainComponent final : public juce::Component,
                             private juce::Timer,
                             private juce::MidiInputCallback {
   public:
-    MainComponent(MixerEngine& mixer, TempoEngine& tempo, juce::AudioDeviceManager& devices);
+    MainComponent(MixerEngine& mixer, TempoEngine& tempo, juce::AudioDeviceManager& devices,
+                  bool hostedByPlugin = false);
     ~MainComponent() override;
     void paint(juce::Graphics&) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress&) override;
     AppState captureState() const;
     void restoreState(const AppState& state);
+    void setHostAudioStatus(double sampleRate, int blockSize);
+    std::function<void(float)> onScaleRequested;
 
   private:
     struct ChannelControls {
@@ -54,6 +58,7 @@ class MainComponent final : public juce::Component,
     MixerEngine& engine;
     TempoEngine& tempoEngine;
     juce::AudioDeviceManager& deviceManager;
+    bool hostedByPlugin{};
     QuadBeatLookAndFeel lookAndFeel;
     std::array<ChannelControls, channelCount> channelControls;
     juce::Label productLabel;

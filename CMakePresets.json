@@ -47,9 +47,9 @@
   ],
   "buildPresets": [
     { "name": "dev-windows", "configurePreset": "dev-windows", "configuration": "Debug" },
-    { "name": "ci-windows", "configurePreset": "ci-windows", "configuration": "Release", "targets": ["QuadBeatFX", "QuadBeatFXTests"] },
+    { "name": "ci-windows", "configurePreset": "ci-windows", "configuration": "Release", "targets": ["QuadBeatFX", "QuadBeatFXPlugin_VST3", "QuadBeatFXTests", "QuadBeatFXPluginTests"] },
     { "name": "dev-macos", "configurePreset": "dev-macos" },
-    { "name": "ci-macos", "configurePreset": "ci-macos", "targets": ["QuadBeatFX", "QuadBeatFXTests"] }
+    { "name": "ci-macos", "configurePreset": "ci-macos", "targets": ["QuadBeatFX", "QuadBeatFXPlugin_VST3", "QuadBeatFXTests", "QuadBeatFXPluginTests"] }
   ],
   "testPresets": [
     { "name": "test-windows", "configurePreset": "ci-windows", "configuration": "Release", "output": { "outputOnFailure": true } },

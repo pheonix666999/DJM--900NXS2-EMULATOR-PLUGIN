@@ -21,3 +21,9 @@ Physical device buffers are translated through persisted atomic routing tables i
 inputs (four stereo pairs and microphone) and six logical outputs. Missing or out-of-range physical
 channels remain silent. Duplicate input mappings intentionally support signal duplication; output
 buses mapped to the same physical destination are summed.
+
+The VST3 adapter presents the same nine logical inputs as four named stereo input buses plus one
+mono microphone bus. It copies those buses into preallocated engine buffers in bounded chunks and
+returns the engine's stereo Master bus to the host. Channel 1 and Master are enabled by default;
+hosts may enable the remaining input buses. The shared `MainComponent` runs in hosted mode, where
+the host owns audio-device configuration and UI scaling resizes the editor rather than the desktop.

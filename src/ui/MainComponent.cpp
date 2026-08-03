@@ -7,8 +7,8 @@
 namespace qb {
 
 MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
-                             juce::AudioDeviceManager& devices)
-    : engine(mixer), tempoEngine(tempo), deviceManager(devices) {
+                             juce::AudioDeviceManager& devices, const bool isHostedByPlugin)
+    : engine(mixer), tempoEngine(tempo), deviceManager(devices), hostedByPlugin(isHostedByPlugin) {
     setLookAndFeel(&lookAndFeel);
     setWantsKeyboardFocus(true);
     productLabel.setText("QUADBEAT FX", juce::dontSendNotification);
@@ -29,7 +29,11 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     scaleSelector.onChange = [this] {
         constexpr std::array<float, 5> scales{0.75F, 1.0F, 1.25F, 1.5F, 2.0F};
         const auto index = std::clamp(scaleSelector.getSelectedItemIndex(), 0, 4);
-        juce::Desktop::getInstance().setGlobalScaleFactor(scales[static_cast<size_t>(index)]);
+        const auto scale = scales[static_cast<size_t>(index)];
+        if (onScaleRequested != nullptr)
+            onScaleRequested(scale);
+        else
+            juce::Desktop::getInstance().setGlobalScaleFactor(scale);
     };
     addAndMakeVisible(scaleSelector);
     settingsButton.onClick = [this] { showSettings(); };
@@ -40,9 +44,14 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
                             juce::dontSendNotification);
     };
     midiEditButton.onClick = [this] { showMidiEditor(); };
-    midiDevices = juce::MidiInput::getAvailableDevices();
-    for (const auto& device : midiDevices)
-        deviceManager.addMidiInputDeviceCallback(device.identifier, this);
+    if (!hostedByPlugin) {
+        midiDevices = juce::MidiInput::getAvailableDevices();
+        for (const auto& device : midiDevices)
+            deviceManager.addMidiInputDeviceCallback(device.identifier, this);
+    } else {
+        settingsButton.setButtonText("HOST I/O");
+        statusLabel.setText("VST3 HOST AUDIO", juce::dontSendNotification);
+    }
     for (int index = 0; index < channelCount; ++index) {
         auto& controls = channelControls[static_cast<size_t>(index)];
         controls.title.setText("CHANNEL " + juce::String(index + 1), juce::dontSendNotification);
@@ -386,6 +395,14 @@ bool MainComponent::keyPressed(const juce::KeyPress& key) {
 }
 
 void MainComponent::showSettings() {
+    if (hostedByPlugin) {
+        juce::AlertWindow::showMessageBoxAsync(
+            juce::MessageBoxIconType::InfoIcon, "Host audio routing",
+            "Audio input and output routing is managed by the plugin host. Enable the auxiliary "
+            "Channel 2, Channel 3, Channel 4, or Microphone input buses in the host when they are "
+            "needed.");
+        return;
+    }
     auto* selector = new SettingsComponent(engine, deviceManager);
     juce::DialogWindow::LaunchOptions options;
     options.content.setOwned(selector);
@@ -395,6 +412,15 @@ void MainComponent::showSettings() {
     options.useNativeTitleBar = true;
     options.resizable = true;
     options.launchAsync();
+}
+
+void MainComponent::setHostAudioStatus(const double sampleRate, const int blockSize) {
+    if (!hostedByPlugin)
+        return;
+    const auto rateText = sampleRate > 0.0 ? juce::String(sampleRate, 0) + " Hz" : "not prepared";
+    const auto blockText = blockSize > 0 ? juce::String(blockSize) + " samples" : "block pending";
+    statusLabel.setText("VST3 HOST AUDIO  |  " + rateText + "  |  " + blockText,
+                        juce::dontSendNotification);
 }
 
 void MainComponent::showMidiEditor() {
