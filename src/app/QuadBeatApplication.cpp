@@ -8,7 +8,7 @@ QuadBeatApplication::MainWindow::MainWindow(MixerEngine& mixer, TempoEngine& tem
     : DocumentWindow("QuadBeat FX", juce::Colour(0xff10151c), allButtons) {
     setUsingNativeTitleBar(true);
     setResizable(true, true);
-    setResizeLimits(1200, 820, 3840, 2160);
+    setResizeLimits(900, 720, 3840, 2160);
     auto content = std::make_unique<MainComponent>(mixer, tempo, devices);
     content->restoreState(state);
     setContentOwned(content.release(), true);

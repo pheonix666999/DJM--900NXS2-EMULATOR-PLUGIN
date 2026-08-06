@@ -1,10 +1,10 @@
 # QuadBeat FX
 
-QuadBeat FX is an original four-channel DJ mixer and Beat FX application for Windows 10/11 x64 and
+QuadBeat FX is an original DJ mixer and Beat FX application for Windows 10/11 x64 and
 macOS 12+ (Apple Silicon and Intel). It is delivered as both a standalone application and a VST3
-effect. It combines independent channel strips,
-three-band EQ/isolator processing, crossfader routing, cue/booth/master buses, tempo analysis, MIDI
-mapping, and fifteen real-time stereo effects in a scalable dark interface.
+effect. Its engine combines multi-channel routing, three-band processing, cue/booth/master buses,
+tempo analysis, MIDI mapping, and fifteen real-time stereo effects behind a compact effects-focused
+interface.
 
 QuadBeat FX is independently designed. It is not affiliated with, endorsed by, or a product of any
 other audio-equipment manufacturer. The documentation-only reference image is never used as a skin
@@ -12,7 +12,7 @@ or distributed with the application.
 
 ## Features
 
-- Four stereo channels with trim, EQ/isolator, faders, mute, cue, metering, and A/B/Thru routing
+- Four stereo processing paths with trim, EQ/isolator, mute, cue, metering, and A/B/Thru routing
 - Master, booth, and headphones buses with graceful degradation on smaller interfaces
 - Automatic live background analysis, manual, and TAP tempo sources; sample-accurate beat clock
   and eight divisions
@@ -20,8 +20,7 @@ or distributed with the application.
   Vinyl Brake, Helix, and Pan
 - LOW/MID/HIGH effect-band selection and logical-bus assignment
 - ASIO (optional) and WASAPI on Windows; CoreAudio on macOS
-- VST3 operation with four stereo channel input buses, a mono microphone bus, and stereo master
-  output; auxiliary buses can be enabled in the host as needed
+- Host-compatible VST3 operation with one conventional stereo input and stereo output
 - Persistent physical routing/microphone state and editable MIDI mappings with scaling, relative
   modes, inversion, deletion, and soft takeover
 
@@ -49,13 +48,14 @@ For macOS, substitute `ci-macos` and `test-macos`. The macOS preset produces a U
 Open **Settings** to choose the audio driver, device, sample rate, buffer size, physical role
 mappings, microphone controls, automatic-BPM source, MIDI inputs, and diagnostics. Interfaces with
 only two outputs can run the Master bus; unavailable Booth and Headphones destinations are not
-accessed. Choose an effect and bus, select one or more frequency bands, choose a beat on the X-PAD,
+accessed. Choose an effect, select one or more frequency bands, choose a beat on the X-PAD,
 then raise LEVEL/DEPTH. Press `T` to tap tempo and use the arrow keys to navigate beat divisions.
 
-For VST3 use, copy the complete `QuadBeat FX.vst3` bundle into the platform VST3 folder, then make
-the host rescan plugins. Channel 1 and Master are active by default. Enable the Channel 2, Channel 3,
-Channel 4, and Microphone input buses in the host when required. The plugin editor keeps all four
-channel strips visible at its minimum supported size of 1200 x 820.
+For VST3 use on Windows, copy the complete `QuadBeat FX.vst3` bundle to
+`C:\Program Files\Common Files\VST3`, then run a verified rescan that includes previously failed
+plugins. The plugin is loaded as an audio effect with one stereo input and one stereo output. See
+`INSTALL-VST3-WINDOWS.txt` in the package. The effects-focused editor can be resized down to
+900 x 720 and does not show the four internal channel strips.
 
 GitHub Actions builds and tests both platforms. Open a workflow run's **Artifacts** section to
 download `QuadBeatFX-Windows-x64` or `QuadBeatFX-macOS-Universal`. CI artifacts and releases are

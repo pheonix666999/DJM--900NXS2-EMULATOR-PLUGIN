@@ -1,4 +1,3 @@
-#include <array>
 #include <cmath>
 #include <iostream>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -45,22 +44,17 @@ int main(int argc, char** argv) {
     auto plugin = formats.createPluginInstance(*descriptions[0], 48000.0, 512, error);
     if (plugin == nullptr)
         return fail("VST3 instance creation failed: " + error);
-    if (plugin->getBusCount(true) != 5 || plugin->getBusCount(false) != 1)
+    if (plugin->getBusCount(true) != 1 || plugin->getBusCount(false) != 1)
         return fail("Unexpected VST3 bus count");
-    const std::array<juce::String, 5> expectedInputNames{"Channel 1", "Channel 2", "Channel 3",
-                                                         "Channel 4", "Microphone"};
-    for (int bus = 0; bus < static_cast<int>(expectedInputNames.size()); ++bus) {
-        if (plugin->getBus(true, bus)->getName() != expectedInputNames[static_cast<size_t>(bus)])
-            return fail("Unexpected VST3 input-bus name");
-    }
+    if (plugin->getBus(true, 0)->getName() != "Input" ||
+        plugin->getBus(false, 0)->getName() != "Output")
+        return fail("Unexpected VST3 bus names");
 
     auto layout = plugin->getBusesLayout();
-    for (int bus = 0; bus < 4; ++bus)
-        layout.inputBuses.getReference(bus) = juce::AudioChannelSet::stereo();
-    layout.inputBuses.getReference(4) = juce::AudioChannelSet::mono();
+    layout.inputBuses.getReference(0) = juce::AudioChannelSet::stereo();
     layout.outputBuses.getReference(0) = juce::AudioChannelSet::stereo();
     if (!plugin->setBusesLayout(layout))
-        return fail("The host could not enable all four channel buses and the microphone bus");
+        return fail("The host could not enable the standard stereo effect layout");
 
     plugin->prepareToPlay(48000.0, 512);
     juce::AudioBuffer<float> audio(
@@ -80,8 +74,11 @@ int main(int argc, char** argv) {
     auto* editor = plugin->createEditorAndMakeActive();
     if (editor == nullptr)
         return fail("VST3 did not create its editor");
-    if (editor->getWidth() < 1200 || editor->getHeight() < 820)
+    if (editor->getWidth() < 900 || editor->getHeight() < 720)
         return fail("VST3 editor opened below its supported minimum size");
+    editor->setSize(900, 720);
+    if (editor->getWidth() != 900 || editor->getHeight() != 720)
+        return fail("VST3 editor did not accept its documented minimum size");
 
     juce::MemoryBlock state;
     plugin->getStateInformation(state);

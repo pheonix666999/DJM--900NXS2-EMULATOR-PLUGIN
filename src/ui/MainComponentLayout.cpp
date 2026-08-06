@@ -51,50 +51,21 @@ void MainComponent::paint(juce::Graphics& graphics) {
                                  4.0F, 4.0F);
     };
 
-    drawPanel(utilityBounds, true);
-    graphics.setColour(juce::Colour(0xffe3e6e7));
-    graphics.setFont(juce::FontOptions(11.0F, juce::Font::bold));
-    graphics.drawText("MIC / PHONES", utilityBounds.withHeight(25), juce::Justification::centred);
-    graphics.setColour(juce::Colour(0xff9ea5a8));
-    graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
-    for (const auto* knob : {&microphone, &headphones, &cueMix})
-        graphics.drawText(knob->getName(), knob->getBounds().translated(0, -15).withHeight(14),
+    if (!hostedByPlugin) {
+        drawPanel(utilityBounds, true);
+        graphics.setColour(juce::Colour(0xffe3e6e7));
+        graphics.setFont(juce::FontOptions(11.0F, juce::Font::bold));
+        graphics.drawText("MIC / PHONES", utilityBounds.withHeight(25),
                           juce::Justification::centred);
-    const auto utilityDividerY = microphoneMute.getBottom() + 18;
-    graphics.setColour(juce::Colour(0xff555b5e));
-    graphics.drawHorizontalLine(utilityDividerY, static_cast<float>(utilityBounds.getX() + 10),
-                                static_cast<float>(utilityBounds.getRight() - 10));
-
-    graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
-    for (int index = 0; index < channelCount; ++index) {
-        const auto& area = channelBounds[static_cast<size_t>(index)];
-        drawPanel(area, false);
-        const auto& controls = channelControls[static_cast<size_t>(index)];
-        for (const auto* knob : {&controls.trim, &controls.high, &controls.mid, &controls.low}) {
-            graphics.setColour(juce::Colour(0xffbec3c5));
-            graphics.drawText(knob->getName(), knob->getBounds().translated(0, -12).withHeight(12),
+        graphics.setColour(juce::Colour(0xff9ea5a8));
+        graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
+        for (const auto* knob : {&microphone, &headphones, &cueMix})
+            graphics.drawText(knob->getName(), knob->getBounds().translated(0, -15).withHeight(14),
                               juce::Justification::centred);
-        }
-        graphics.setColour(juce::Colour(0xff939a9d));
-        graphics.drawText("CHANNEL FADER",
-                          controls.fader.getBounds().translated(0, -14).withHeight(13),
-                          juce::Justification::centred);
-
-        const auto fader = controls.fader.getBounds();
-        graphics.setColour(juce::Colour(0xff555b5f));
-        for (int tick = 0; tick <= 10; ++tick) {
-            const auto y = fader.getY() + tick * fader.getHeight() / 10;
-            const auto half = tick % 5 == 0 ? 9.0F : 5.0F;
-            graphics.drawLine(static_cast<float>(fader.getCentreX()) - half, static_cast<float>(y),
-                              static_cast<float>(fader.getCentreX()) + half, static_cast<float>(y),
-                              1.0F);
-        }
-
-        const auto meterTop = controls.trim.getY() + 4;
-        const auto meterBottom = controls.fader.getBottom();
-        drawMeter(graphics,
-                  {area.getRight() - 10, meterTop, 4, std::max(1, meterBottom - meterTop)},
-                  controls.meter, 26);
+        const auto utilityDividerY = microphoneMute.getBottom() + 18;
+        graphics.setColour(juce::Colour(0xff555b5e));
+        graphics.drawHorizontalLine(utilityDividerY, static_cast<float>(utilityBounds.getX() + 10),
+                                    static_cast<float>(utilityBounds.getRight() - 10));
     }
 
     drawPanel(monitorBounds, true);
@@ -103,9 +74,12 @@ void MainComponent::paint(juce::Graphics& graphics) {
     graphics.drawText("MASTER", monitorBounds.withHeight(25), juce::Justification::centred);
     graphics.setColour(juce::Colour(0xffaeb4b6));
     graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
-    for (const auto* knob : {&master, &booth})
+    for (const auto* knob : {&master, &booth}) {
+        if (!knob->isVisible())
+            continue;
         graphics.drawText(knob->getName(), knob->getBounds().translated(0, -15).withHeight(14),
                           juce::Justification::centred);
+    }
     graphics.drawText("MASTER LEVEL", masterMeterBounds.translated(0, -17).withHeight(14),
                       juce::Justification::centred);
     auto meters = masterMeterBounds.reduced(masterMeterBounds.getWidth() / 4, 0);
@@ -143,32 +117,6 @@ void MainComponent::paint(juce::Graphics& graphics) {
                       juce::Justification::centred);
     graphics.drawText("LEVEL / DEPTH", depth.getBounds().translated(0, -14).withHeight(13),
                       juce::Justification::centred);
-
-    drawPanel(crossfaderBounds, false);
-    graphics.setColour(juce::Colour(0xff9ca3a5));
-    graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
-    graphics.drawText("CROSSFADER ASSIGNMENT", crossfaderBounds.withHeight(17),
-                      juce::Justification::centred);
-}
-
-void MainComponent::layoutChannel(ChannelControls& channel, juce::Rectangle<int> area) {
-    area.reduce(7, 5);
-    area.removeFromRight(9);
-    channel.title.setBounds(area.removeFromTop(22));
-    channel.eqMode.setBounds(area.removeFromTop(24).reduced(3, 2));
-    area.removeFromTop(9);
-    channel.trim.setBounds(area.removeFromTop(62));
-    for (auto* knob : {&channel.high, &channel.mid, &channel.low}) {
-        area.removeFromTop(11);
-        knob->setBounds(area.removeFromTop(54));
-    }
-    area.removeFromTop(5);
-    auto buttons = area.removeFromTop(34);
-    channel.cue.setBounds(buttons.removeFromLeft(buttons.getWidth() / 2).reduced(2));
-    channel.mute.setBounds(buttons.reduced(2));
-    area.removeFromTop(12);
-    channel.assignment.setBounds(area.removeFromBottom(28).reduced(3, 1));
-    channel.fader.setBounds(area.reduced(9, 2));
 }
 
 void MainComponent::resized() {
@@ -181,62 +129,55 @@ void MainComponent::resized() {
     scaleSelector.setBounds(header.removeFromRight(76).reduced(2, 4));
     statusLabel.setBounds(header);
 
-    const auto utilityWidth = std::clamp(bounds.getWidth() * 12 / 100, 150, 205);
-    const auto rightWidth = std::clamp(bounds.getWidth() * 31 / 100, 370, 535);
-    auto utilityArea = bounds.removeFromLeft(utilityWidth).reduced(3, 2);
-    auto rightArea = bounds.removeFromRight(rightWidth).reduced(3, 2);
-    auto footer = bounds.removeFromBottom(72);
-    auto mixerArea = bounds.reduced(0, 2);
-
-    const auto monitorWidth = std::clamp(rightArea.getWidth() * 36 / 100, 132, 190);
-    auto monitorArea = rightArea.removeFromLeft(monitorWidth).reduced(0, 0);
-    auto fxArea = rightArea.reduced(3, 0);
+    auto utilityArea = juce::Rectangle<int>();
+    if (!hostedByPlugin) {
+        const auto utilityWidth = std::clamp(bounds.getWidth() * 20 / 100, 180, 230);
+        utilityArea = bounds.removeFromLeft(utilityWidth).reduced(3, 2);
+    }
+    const auto monitorWidth = std::clamp(bounds.getWidth() * 25 / 100, 205, 275);
+    auto monitorArea = bounds.removeFromLeft(monitorWidth).reduced(3, 2);
+    auto fxArea = bounds.reduced(3, 2);
 
     utilityBounds = utilityArea;
     monitorBounds = monitorArea;
     fxBounds = fxArea;
-    crossfaderBounds = footer.reduced(3, 2);
-    crossfader.setBounds(crossfaderBounds.reduced(24, 16).withTrimmedTop(5));
 
-    const auto stripWidth = mixerArea.getWidth() / channelCount;
-    for (int index = 0; index < channelCount; ++index) {
-        auto area =
-            mixerArea.removeFromLeft(index == channelCount - 1 ? mixerArea.getWidth() : stripWidth)
-                .reduced(3, 0);
-        channelBounds[static_cast<size_t>(index)] = area;
-        layoutChannel(channelControls[static_cast<size_t>(index)], area);
-    }
-
-    auto utility = utilityArea.reduced(9, 8);
-    utility.removeFromTop(39);
-    microphone.setBounds(utility.removeFromTop(112).reduced(8, 0));
-    auto micButtons = utility.removeFromTop(35);
-    microphoneCue.setBounds(micButtons.removeFromLeft(micButtons.getWidth() / 2).reduced(2));
-    microphoneMute.setBounds(micButtons.reduced(2));
-    utility.removeFromTop(36);
-    auto phonesSlot = utility.removeFromTop(std::min(150, utility.getHeight() / 2));
-    phonesSlot.removeFromTop(16);
-    headphones.setBounds(phonesSlot.reduced(7, 3));
-    if (utility.getHeight() > 0) {
-        utility.removeFromTop(std::min(18, utility.getHeight()));
-        cueMix.setBounds(utility.reduced(7, 3));
+    if (!hostedByPlugin) {
+        auto utility = utilityArea.reduced(9, 8);
+        utility.removeFromTop(39);
+        microphone.setBounds(utility.removeFromTop(112).reduced(8, 0));
+        auto micButtons = utility.removeFromTop(35);
+        microphoneCue.setBounds(micButtons.removeFromLeft(micButtons.getWidth() / 2).reduced(2));
+        microphoneMute.setBounds(micButtons.reduced(2));
+        utility.removeFromTop(36);
+        auto phonesSlot = utility.removeFromTop(std::min(150, utility.getHeight() / 2));
+        phonesSlot.removeFromTop(16);
+        headphones.setBounds(phonesSlot.reduced(7, 3));
+        if (utility.getHeight() > 0) {
+            utility.removeFromTop(std::min(18, utility.getHeight()));
+            cueMix.setBounds(utility.reduced(7, 3));
+        }
     }
 
     auto monitor = monitorArea.reduced(8, 8);
     monitor.removeFromTop(38);
-    master.setBounds(monitor.removeFromTop(std::min(150, monitor.getHeight() / 4)).reduced(6, 0));
+    master.setBounds(
+        monitor.removeFromTop(std::min(hostedByPlugin ? 190 : 150, monitor.getHeight() / 3))
+            .reduced(6, 0));
     monitor.removeFromTop(std::min(26, monitor.getHeight()));
-    masterMeterBounds = monitor.removeFromTop(std::min(235, monitor.getHeight() / 2)).reduced(6, 0);
-    monitor.removeFromTop(std::min(28, monitor.getHeight()));
-    booth.setBounds(monitor.reduced(7, 2));
+    masterMeterBounds =
+        monitor.removeFromTop(std::min(hostedByPlugin ? 320 : 235, monitor.getHeight() * 2 / 3))
+            .reduced(6, 0);
+    if (!hostedByPlugin) {
+        monitor.removeFromTop(std::min(28, monitor.getHeight()));
+        booth.setBounds(monitor.reduced(7, 2));
+    }
 
     auto fx = fxArea.reduced(10, 7);
     fx.removeFromTop(25);
     const auto panelHeight = fx.getHeight();
-    const auto displayHeight = std::clamp(panelHeight * 16 / 100, 125, 165);
-    const auto padHeight = std::clamp(panelHeight * 6 / 100, 42, 55);
-    const auto effectHeight = std::clamp(panelHeight * 12 / 100, 82, 112);
-    const auto busHeight = std::clamp(panelHeight * 9 / 100, 65, 86);
+    const auto displayHeight = std::clamp(panelHeight * 24 / 100, 135, 175);
+    const auto padHeight = std::clamp(panelHeight * 8 / 100, 46, 58);
 
     display.setBounds(fx.removeFromTop(displayHeight).reduced(7, 6));
     fx.removeFromTop(16);
@@ -260,22 +201,21 @@ void MainComponent::resized() {
     quantizeButton.setBounds(tempoArea.removeFromRight(tempoArea.getWidth() / 2).reduced(3, 11));
     tapButton.setBounds(tempoArea.reduced(2));
 
-    fx.removeFromTop(15);
+    fx.removeFromTop(14);
     auto bandsArea = fx.removeFromTop(33);
     lowButton.setBounds(bandsArea.removeFromLeft(bandsArea.getWidth() / 3).reduced(2));
     midButton.setBounds(bandsArea.removeFromLeft(bandsArea.getWidth() / 2).reduced(2));
     highButton.setBounds(bandsArea.reduced(2));
 
-    fx.removeFromTop(15);
-    effectSelector.setBounds(fx.removeFromTop(std::min(effectHeight, fx.getHeight())));
-    fx.removeFromTop(std::min(15, fx.getHeight()));
-    busSelector.setBounds(fx.removeFromTop(std::min(busHeight, fx.getHeight())));
-    fx.removeFromTop(std::min(14, fx.getHeight()));
-    const auto timeHeight = std::min(std::max(54, fx.getHeight() * 42 / 100), fx.getHeight());
-    time.setBounds(fx.removeFromTop(timeHeight).reduced(10, 1));
-    if (fx.getHeight() > 0) {
-        fx.removeFromTop(std::min(14, fx.getHeight()));
-        depth.setBounds(fx.reduced(10, 1));
-    }
+    fx.removeFromTop(16);
+    const auto selectorHeight =
+        std::min(std::clamp(panelHeight * 23 / 100, 140, 175), std::max(0, fx.getHeight() - 100));
+    auto selectors = fx.removeFromTop(selectorHeight);
+    effectSelector.setBounds(selectors.removeFromLeft(selectors.getWidth() * 68 / 100).reduced(4));
+    busSelector.setBounds(selectors.reduced(4));
+    fx.removeFromTop(std::min(10, fx.getHeight()));
+    auto knobs = fx;
+    time.setBounds(knobs.removeFromLeft(knobs.getWidth() / 2).reduced(14, 1));
+    depth.setBounds(knobs.reduced(14, 1));
 }
 } // namespace qb

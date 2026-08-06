@@ -42,8 +42,8 @@ struct AppState {
     double uiScale{1.0};
     int windowX{-1};
     int windowY{-1};
-    int windowWidth{1500};
-    int windowHeight{960};
+    int windowWidth{1100};
+    int windowHeight{800};
     std::string audioDeviceXml;
     juce::var midiMappings;
     std::array<int, 9> inputMappings{0, 1, 2, 3, 4, 5, 6, 7, -1};

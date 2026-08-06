@@ -35,10 +35,11 @@ outputs are:
 - macOS standalone: `out/ci-macos/QuadBeatFX_artefacts/Release/QuadBeat FX.app`
 - macOS VST3: `out/ci-macos/QuadBeatFXPlugin_artefacts/Release/VST3/QuadBeat FX.vst3`
 
-Keep the entire `.vst3` bundle intact. On Windows, copy it to a VST3 search folder such as
-`C:\Program Files\Common Files\VST3`, then ask the host to rescan plugins. On macOS, copy it to
+Keep the entire `.vst3` bundle intact. On Windows, copy it to the standard VST3 folder
+`C:\Program Files\Common Files\VST3`, then ask the host to rescan previously failed and previously
+verified plugins. Custom VST2 search paths may not be searched for VST3 bundles. On macOS, copy it to
 `/Library/Audio/Plug-Ins/VST3` or the corresponding per-user folder. A build is not a host-loadable
 plugin if only the standalone executable is copied.
 
 The macOS presets set deployment target 12 and `CMAKE_OSX_ARCHITECTURES=arm64;x86_64`. All build
-trees live under `out/`. The minimum application window is 1200×820.
+trees live under `out/`. The minimum application window is 900×720.

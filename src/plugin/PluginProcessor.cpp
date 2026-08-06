@@ -4,14 +4,10 @@
 namespace qb {
 QuadBeatAudioProcessor::QuadBeatAudioProcessor()
     : AudioProcessor(BusesProperties()
-                         .withInput("Channel 1", juce::AudioChannelSet::stereo(), true)
-                         .withInput("Channel 2", juce::AudioChannelSet::stereo(), false)
-                         .withInput("Channel 3", juce::AudioChannelSet::stereo(), false)
-                         .withInput("Channel 4", juce::AudioChannelSet::stereo(), false)
-                         .withInput("Microphone", juce::AudioChannelSet::mono(), false)
-                         .withOutput("Master", juce::AudioChannelSet::stereo(), true)) {
-    editorState.windowWidth = 1200;
-    editorState.windowHeight = 820;
+                         .withInput("Input", juce::AudioChannelSet::stereo(), true)
+                         .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
+    editorState.windowWidth = 1100;
+    editorState.windowHeight = 800;
     mixer.setTempoEngine(&tempo);
 }
 
@@ -27,18 +23,9 @@ void QuadBeatAudioProcessor::releaseResources() {
 }
 
 bool QuadBeatAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
-    if (layouts.getMainInputChannelSet() != juce::AudioChannelSet::stereo() ||
-        layouts.getMainOutputChannelSet() != juce::AudioChannelSet::stereo())
-        return false;
-
-    for (int bus = 1; bus < 4; ++bus) {
-        const auto set = layouts.getChannelSet(true, bus);
-        if (!set.isDisabled() && set != juce::AudioChannelSet::stereo())
-            return false;
-    }
-
-    const auto microphone = layouts.getChannelSet(true, 4);
-    return microphone.isDisabled() || microphone == juce::AudioChannelSet::mono();
+    return layouts.inputBuses.size() == 1 && layouts.outputBuses.size() == 1 &&
+           layouts.getMainInputChannelSet() == juce::AudioChannelSet::stereo() &&
+           layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
 }
 
 void QuadBeatAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {
@@ -47,22 +34,18 @@ void QuadBeatAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce
 
     for (int offset = 0; offset < totalSamples; offset += maximumInternalBlock) {
         const auto samples = std::min(maximumInternalBlock, totalSamples - offset);
-        logicalInputs.setSize(internalInputChannels, samples, false, false, true);
-        logicalOutputs.setSize(internalOutputChannels, samples, false, false, true);
-        logicalInputs.clear();
-        logicalOutputs.clear();
+        logicalInputs.clear(0, samples);
+        logicalOutputs.clear(0, samples);
 
-        for (int bus = 0; bus < 4; ++bus) {
-            const auto input = getBusBuffer(buffer, true, bus);
-            for (int side = 0; side < std::min(2, input.getNumChannels()); ++side)
-                logicalInputs.copyFrom(bus * 2 + side, 0, input, side, offset, samples);
-        }
+        const auto input = getBusBuffer(buffer, true, 0);
+        for (int side = 0; side < std::min(2, input.getNumChannels()); ++side)
+            logicalInputs.copyFrom(side, 0, input, side, offset, samples);
 
-        const auto microphone = getBusBuffer(buffer, true, 4);
-        if (microphone.getNumChannels() > 0)
-            logicalInputs.copyFrom(channelCount * 2, 0, microphone, 0, offset, samples);
-
-        mixer.process(logicalInputs, logicalOutputs);
+        juce::AudioBuffer<float> inputView(logicalInputs.getArrayOfWritePointers(),
+                                           internalInputChannels, samples);
+        juce::AudioBuffer<float> outputView(logicalOutputs.getArrayOfWritePointers(),
+                                            internalOutputChannels, samples);
+        mixer.process(inputView, outputView);
         auto masterOutput = getBusBuffer(buffer, false, 0);
         masterOutput.clear(offset, samples);
         for (int side = 0; side < std::min(2, masterOutput.getNumChannels()); ++side)

@@ -1,0 +1,14 @@
+QUADBEAT FX VST3 - WINDOWS INSTALLATION
+
+1. Close the plugin host.
+2. Remove any older or incomplete QuadBeat FX.vst3 copy.
+3. Copy the entire "QuadBeat FX.vst3" folder to:
+   C:\Program Files\Common Files\VST3
+4. Confirm this file exists after copying:
+   C:\Program Files\Common Files\VST3\QuadBeat FX.vst3\Contents\x86_64-win\QuadBeat FX.vst3
+5. Open the host's plugin manager and run a verified scan with both previously verified plugins
+   and plugins with errors enabled for rescanning.
+6. Load QuadBeat FX as an audio effect. It exposes one stereo input and one stereo output.
+
+Do not copy only the inner binary, rename it to .dll, or place this VST3 bundle in a custom VST2
+folder. This build is 64-bit and requires a 64-bit Windows host.

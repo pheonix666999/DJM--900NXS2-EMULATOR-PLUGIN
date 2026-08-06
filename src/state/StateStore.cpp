@@ -101,8 +101,8 @@ std::optional<AppState> StateStore::fromVar(const juce::var& value) {
     state.uiScale = std::clamp(static_cast<double>(root->getProperty("uiScale")), 0.75, 2.0);
     state.windowX = root->getProperty("windowX");
     state.windowY = root->getProperty("windowY");
-    state.windowWidth = std::clamp(static_cast<int>(root->getProperty("windowWidth")), 1200, 3840);
-    state.windowHeight = std::clamp(static_cast<int>(root->getProperty("windowHeight")), 820, 2160);
+    state.windowWidth = std::clamp(static_cast<int>(root->getProperty("windowWidth")), 900, 3840);
+    state.windowHeight = std::clamp(static_cast<int>(root->getProperty("windowHeight")), 720, 2160);
     state.audioDeviceXml = root->getProperty("audioDeviceXml").toString().toStdString();
     state.midiMappings = root->getProperty("midiMappings");
     const auto inputMappings = root->getProperty("inputMappings");

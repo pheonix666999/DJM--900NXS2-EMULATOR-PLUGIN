@@ -49,7 +49,6 @@ class MainComponent final : public juce::Component,
     void showSettings();
     void showMidiEditor();
     void timerCallback() override;
-    void layoutChannel(ChannelControls&, juce::Rectangle<int>);
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage&) override;
     void handleMidiOnMessageThread(juce::MidiMessage);
     float parameterValue(const std::string& id) const;
@@ -96,12 +95,10 @@ class MainComponent final : public juce::Component,
     bool midiLearning{};
     juce::Array<juce::MidiDeviceInfo> midiDevices;
     std::unique_ptr<juce::DialogWindow> settingsWindow;
-    std::array<juce::Rectangle<int>, channelCount> channelBounds;
     juce::Rectangle<int> utilityBounds;
     juce::Rectangle<int> monitorBounds;
     juce::Rectangle<int> masterMeterBounds;
     juce::Rectangle<int> fxBounds;
-    juce::Rectangle<int> crossfaderBounds;
     std::array<float, 2> masterMeters{};
 };
 } // namespace qb

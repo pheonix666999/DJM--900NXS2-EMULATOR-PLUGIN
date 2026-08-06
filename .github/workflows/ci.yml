@@ -65,7 +65,7 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/QuadBeatFX | Out-Null
           Copy-Item $exe.FullName artifacts/QuadBeatFX/
           Copy-Item $vst3.FullName artifacts/QuadBeatFX/ -Recurse
-          Copy-Item README.md,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
+          Copy-Item README.md,INSTALL-VST3-WINDOWS.txt,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
           Compress-Archive artifacts/QuadBeatFX/* artifacts/QuadBeatFX-Windows-x64.zip
           (Get-FileHash artifacts/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
             Set-Content artifacts/QuadBeatFX-Windows-x64.zip.sha256

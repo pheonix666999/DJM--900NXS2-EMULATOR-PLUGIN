@@ -1,8 +1,8 @@
 # Releases
 
 Tags matching `v*` trigger clean Windows x64 and macOS Universal builds, tests, package checksums,
-and a GitHub release. Packages include the standalone app, VST3 bundle, quick-start README, license,
-and notices; they
+and a GitHub release. Windows packages include the standalone app, complete VST3 bundle, explicit
+VST3 installation instructions, quick-start README, license, and notices; they
 exclude source references, tests, Git data, build intermediates, and credentials.
 
 Ordinary CI and release outputs are unsigned. Future signing may use protected secrets for a

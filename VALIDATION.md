@@ -1,66 +1,49 @@
 # Validation report
 
-Validated source commit: `548a50a` (with foundations `f698719` and initial implementation
-`f1083d7`).
+Validated on Windows 11 x64 against the working tree based on commit `5996743`.
 
 ## Local evidence
 
-Executed on Windows 11 x64 with CMake 4.4.0, Visual Studio Build Tools 2022/MSVC 19.44,
-Windows SDK 10.0.26100.0, JUCE 8.0.13, and `QB_ENABLE_ASIO=ON`:
+Executed with CMake 4.4.0, Visual Studio Build Tools 2022/MSVC 19.44, Windows SDK
+10.0.26100.0, JUCE 8.0.13, and `QB_ENABLE_ASIO=ON`:
 
 ```text
 cmake --preset ci-windows
 cmake --build --preset ci-windows --parallel 4
 ctest --preset test-windows --output-on-failure
-QuadBeatFXTests.exe
-clang-format --dry-run --Werror <all src/tests C++ files>
+clang-format -i <all src/tests C++ files>
 git diff --check
-cpack --config out/ci-windows/CPackConfig.cmake -C Release
 ```
 
 Results:
 
-- Windows Release application: PASS
-- Windows Release `QuadBeatFXTests`: PASS
-- CTest: 1/1 target passed
-- Test harness: 216 checks, 0 failures
-- Four-second GUI process smoke test: PASS
-- C++ formatting and whitespace validation: PASS
-- CPack ZIP: PASS; exactly `QuadBeat FX.exe`, `README.md`, `LICENSE.md`, and
-  `THIRD_PARTY_NOTICES.md`
-- Reference image, test executable, JUCE development files, and intermediates absent from package
+- Windows Release standalone application: PASS
+- Windows x64 VST3 bundle: PASS
+- Core deterministic test suite: PASS
+- VST3 scan, instantiation, stereo bus layout, processing, editor, and state round-trip: PASS
+- CTest: 2/2 targets passed
+- Editor resize to the documented 900×720 minimum: PASS
+- Hosted editor visual inspection at 125% Windows display scaling: PASS; four channel strips are
+  absent and dense effect labels use separate non-overlapping columns
+- VST3 metadata version: 0.1.1
+- VST3 binary architecture: PE x86_64
+- Versioned Windows delivery ZIP: PASS; complete bundle and installation guide are present, while
+  source references, Git data, tests, and build intermediates are absent
 
 The automated checks cover mixer/channel/booth/cue routing, mute, crossfader assignment, isolator
-kill, beat clock, division bounds, manual/TAP/automatic tempo, five generated click-track tempos,
-all fifteen effects at 44.1/48/88.2/96 kHz, finite/bounded/nontrivial effect output, bypass safety,
-NaN/infinity protection, state round-trip/corrupt recovery, MIDI scaling/serialization, and soft
-takeover.
+kill, beat clock, division bounds, manual/TAP/automatic tempo, generated click-track tempos, all
+fifteen effects at 44.1/48/88.2/96 kHz, finite/bounded effect output, bypass safety, invalid-number
+protection, state recovery, MIDI mapping behavior, and the standard one-input/one-output VST3 host
+contract.
 
-## Hosted CI and artifacts
+## Required external validation
 
-The repository is connected to `pheonix666999/DJM--900NXS2-EMULATOR-PLUGIN`. GitHub Actions for the
-production-completion branch are pending at the time of this local validation record. The
-workflows define:
+The target commercial host is not installed in this development environment, so an in-host scan
+cannot be claimed as completed here. The replacement VST3 deliberately uses the conventional stereo
+effect layout and passes the JUCE VST3 scanner/host. On the client machine, install the complete
+bundle in the Windows system VST3 location and rescan both previously verified plugins and plugins
+with errors as described in `INSTALL-VST3-WINDOWS.txt`.
 
-- `QuadBeatFX-Windows-x64`
-- `QuadBeatFX-macOS-Universal`
-- `QuadBeatFX-Test-Results-Windows`
-- `QuadBeatFX-Test-Results-macOS`
-
-The macOS Universal build and `lipo` verification remain pending on GitHub Actions or macOS
-hardware. They have not been claimed as passed.
-
-## Required manual and external validation
-
-Every item in `docs/HARDWARE_VALIDATION.md` remains to be completed with physical interfaces and
-MIDI controllers, including ASIO/WASAPI/CoreAudio enumeration, 2/4/8+ channel routing, disconnect
-recovery, physical relative encoders, latency/dropouts, sleep/wake, and long-duration CPU/stability.
-
-The builds are unsigned and not notarized. Commercial distribution remains subject to JUCE and
-ASIO licensing review; no signing identities or credentials are present.
-
-The production-gap validation adds live background onset analysis, selected analysis sources,
-explicit physical role mapping, the microphone bus, quantized activation/capture, fixed Roll/Slip
-Roll capture, and editable MIDI ranges/inversion/channels/relative modes/pickup/deletion. Remaining
-release limitations are the hosted macOS result, physical hardware matrix, licensing review, and
-signing/notarization status described above.
+The physical audio-interface and MIDI-controller matrix in `docs/HARDWARE_VALIDATION.md`, hosted
+macOS result, long-duration stability run, licensing review, and signing/notarization remain external
+release checks. Builds remain unsigned.

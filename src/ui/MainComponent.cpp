@@ -69,19 +69,12 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         controls.fader.setSliderStyle(juce::Slider::LinearVertical);
         controls.fader.setRange(0.0, 1.0, 0.001);
         controls.fader.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        for (auto* control :
-             {&controls.trim, &controls.high, &controls.mid, &controls.low, &controls.fader})
-            addAndMakeVisible(*control);
         controls.cue.setClickingTogglesState(true);
         controls.mute.setClickingTogglesState(true);
         controls.cue.setComponentID("cue");
         controls.mute.setComponentID("mute");
-        addAndMakeVisible(controls.cue);
-        addAndMakeVisible(controls.mute);
         controls.assignment.addItemList({"A", "B", "THRU"}, 1);
         controls.eqMode.addItemList({"EQ", "ISOLATOR"}, 1);
-        addAndMakeVisible(controls.assignment);
-        addAndMakeVisible(controls.eqMode);
         bindChannel(index);
     }
     configureKnob(microphone);
@@ -123,7 +116,6 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         lastLearnTarget = "crossfader";
         engine.crossfader.store(static_cast<float>(crossfader.getValue()));
     };
-    addAndMakeVisible(crossfader);
     master.onValueChange = [this] {
         lastLearnTarget = "master";
         engine.masterLevel.store(static_cast<float>(master.getValue()));
@@ -150,12 +142,12 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
         lastLearnTarget = "effect";
         updateEffect();
     };
-    busSelector.addItemList({"MIC", "CH1", "CH2", "CH3", "CH4", "XFADE A", "XFADE B", "MASTER"}, 1);
+    busSelector.addItem("MASTER", 8);
     busSelector.setName("FX ASSIGN");
     busSelector.setSelectedId(8);
     busSelector.onChange = [this] {
         lastLearnTarget = "effectBus";
-        engine.effectBus.store(static_cast<EffectBus>(busSelector.getSelectedItemIndex()));
+        engine.effectBus.store(EffectBus::master);
     };
     addAndMakeVisible(effectSelector);
     addAndMakeVisible(busSelector);
@@ -272,6 +264,15 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     booth.setValue(0.7);
     headphones.setValue(0.7);
     cueMix.setValue(0.5);
+    if (hostedByPlugin) {
+        for (auto* control :
+             {static_cast<juce::Component*>(&microphone),
+              static_cast<juce::Component*>(&microphoneCue),
+              static_cast<juce::Component*>(&microphoneMute), static_cast<juce::Component*>(&booth),
+              static_cast<juce::Component*>(&headphones), static_cast<juce::Component*>(&cueMix)})
+            control->setVisible(false);
+    }
+    engine.effectBus.store(EffectBus::master);
     startTimerHz(30);
     updateEffect();
 }
@@ -398,9 +399,8 @@ void MainComponent::showSettings() {
     if (hostedByPlugin) {
         juce::AlertWindow::showMessageBoxAsync(
             juce::MessageBoxIconType::InfoIcon, "Host audio routing",
-            "Audio input and output routing is managed by the plugin host. Enable the auxiliary "
-            "Channel 2, Channel 3, Channel 4, or Microphone input buses in the host when they are "
-            "needed.");
+            "Audio routing is managed by the plugin host. QuadBeat FX uses one standard stereo "
+            "input and one stereo output so it can be inserted directly in a mixer effect slot.");
         return;
     }
     auto* selector = new SettingsComponent(engine, deviceManager);
@@ -509,7 +509,7 @@ float MainComponent::parameterValue(const std::string& id) const {
     if (id == "effect")
         return static_cast<float>(effectSelector.getSelectedItemIndex()) / 14.0F;
     if (id == "effectBus")
-        return static_cast<float>(busSelector.getSelectedItemIndex()) / 7.0F;
+        return 1.0F;
     if (id == "beatDivision")
         return static_cast<float>(selectedDivision) / 7.0F;
     if (id == "quantize")
@@ -572,10 +572,10 @@ void MainComponent::setParameterValue(const std::string& id, const float value) 
     else if (id == "effect")
         effectSelector.setSelectedItemIndex(
             std::clamp(static_cast<int>(std::round(normalised * 14.0F)), 0, 14));
-    else if (id == "effectBus")
-        busSelector.setSelectedItemIndex(
-            std::clamp(static_cast<int>(std::round(normalised * 7.0F)), 0, 7));
-    else if (id == "beatDivision") {
+    else if (id == "effectBus") {
+        busSelector.setSelectedId(8);
+        engine.effectBus.store(EffectBus::master);
+    } else if (id == "beatDivision") {
         selectedDivision = std::clamp(static_cast<int>(std::round(normalised * 7.0F)), 0, 7);
         updateEffect();
     } else if (id == "tap" && normalised > 0.5F)
@@ -649,7 +649,7 @@ AppState MainComponent::captureState() const {
     state.headphones = static_cast<float>(headphones.getValue());
     state.cueMix = static_cast<float>(cueMix.getValue());
     state.effect = static_cast<EffectType>(effectSelector.getSelectedItemIndex());
-    state.effectBus = static_cast<EffectBus>(busSelector.getSelectedItemIndex());
+    state.effectBus = EffectBus::master;
     state.division = selectedDivision;
     state.effectTime = static_cast<float>((time.getValue() + 1.0) * 0.5);
     state.effectDepth = static_cast<float>((depth.getValue() + 1.0) * 0.5);
@@ -699,7 +699,8 @@ void MainComponent::restoreState(const AppState& state) {
     headphones.setValue(state.headphones);
     cueMix.setValue(state.cueMix);
     effectSelector.setSelectedItemIndex(static_cast<int>(state.effect));
-    busSelector.setSelectedItemIndex(static_cast<int>(state.effectBus));
+    busSelector.setSelectedId(8);
+    engine.effectBus.store(EffectBus::master);
     selectedDivision = state.division;
     time.setValue(state.effectTime * 2.0F - 1.0F);
     depth.setValue(state.effectDepth * 2.0F - 1.0F);

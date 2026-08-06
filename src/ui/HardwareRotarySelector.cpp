@@ -58,10 +58,13 @@ void HardwareRotarySelector::setSelectedItemIndex(const int index,
 }
 
 juce::Rectangle<float> HardwareRotarySelector::knobBounds() const {
-    const auto diameter = std::min(72.0F, static_cast<float>(getHeight()) * 0.48F);
+    const auto dense = items.size() > 10;
+    const auto diameter = std::min(
+        dense ? 78.0F : 72.0F, std::min(static_cast<float>(getHeight()) * 0.48F,
+                                        static_cast<float>(getWidth()) * (dense ? 0.24F : 0.52F)));
     return juce::Rectangle<float>(diameter, diameter)
-        .withCentre(
-            {static_cast<float>(getWidth()) * 0.5F, static_cast<float>(getHeight()) * 0.61F});
+        .withCentre({static_cast<float>(getWidth()) * 0.5F,
+                     static_cast<float>(getHeight()) * (dense ? 0.52F : 0.58F)});
 }
 
 void HardwareRotarySelector::paint(juce::Graphics& graphics) {
@@ -70,22 +73,45 @@ void HardwareRotarySelector::paint(juce::Graphics& graphics) {
 
     const auto knob = knobBounds();
     const auto centre = knob.getCentre();
-    const auto labelRadiusX = std::max(54.0F, static_cast<float>(getWidth()) * 0.34F);
-    const auto labelRadiusY = std::max(38.0F, static_cast<float>(getHeight()) * 0.34F);
     const auto count = static_cast<int>(items.size());
 
-    graphics.setFont(juce::FontOptions(count > 10 ? 8.0F : 9.0F, juce::Font::bold));
-    for (int index = 0; index < count; ++index) {
-        const auto proportion =
-            count == 1 ? 0.5F : static_cast<float>(index) / static_cast<float>(count - 1);
-        const auto angle = rotaryStart + proportion * (rotaryEnd - rotaryStart);
-        const auto x = centre.x + std::sin(angle) * labelRadiusX;
-        const auto y = centre.y - std::cos(angle) * labelRadiusY;
-        auto label = juce::Rectangle<float>(56.0F, 15.0F).withCentre({x, y});
-        graphics.setColour(index == selectedIndex ? QuadBeatLookAndFeel::accent()
-                                                  : juce::Colour(0xff9ca5aa));
-        graphics.drawFittedText(items[static_cast<size_t>(index)].text, label.toNearestInt(),
-                                juce::Justification::centred, 1, 0.72F);
+    if (count > 10) {
+        auto labelArea = getLocalBounds().reduced(5).withTrimmedBottom(19);
+        const auto rows = (count + 1) / 2;
+        const auto rowHeight = std::max(12, labelArea.getHeight() / rows);
+        const auto leftWidth = std::max(0, static_cast<int>(knob.getX()) - labelArea.getX() - 8);
+        const auto rightX = static_cast<int>(std::ceil(knob.getRight())) + 8;
+        const auto rightWidth = std::max(0, labelArea.getRight() - rightX);
+        graphics.setFont(juce::FontOptions(8.0F, juce::Font::bold));
+        for (int index = 0; index < count; ++index) {
+            const auto rightColumn = index >= rows;
+            const auto row = rightColumn ? index - rows : index;
+            const auto label = juce::Rectangle<int>(
+                rightColumn ? rightX : labelArea.getX(), labelArea.getY() + row * rowHeight,
+                rightColumn ? rightWidth : leftWidth, rowHeight);
+            graphics.setColour(index == selectedIndex ? QuadBeatLookAndFeel::accent()
+                                                      : juce::Colour(0xff9ca5aa));
+            graphics.drawFittedText(items[static_cast<size_t>(index)].text, label,
+                                    rightColumn ? juce::Justification::centredLeft
+                                                : juce::Justification::centredRight,
+                                    1, 0.76F);
+        }
+    } else {
+        const auto labelRadiusX = std::max(42.0F, static_cast<float>(getWidth()) * 0.34F);
+        const auto labelRadiusY = std::max(34.0F, static_cast<float>(getHeight()) * 0.32F);
+        graphics.setFont(juce::FontOptions(9.0F, juce::Font::bold));
+        for (int index = 0; index < count; ++index) {
+            const auto proportion =
+                count == 1 ? 0.5F : static_cast<float>(index) / static_cast<float>(count - 1);
+            const auto angle = rotaryStart + proportion * (rotaryEnd - rotaryStart);
+            const auto x = centre.x + std::sin(angle) * labelRadiusX;
+            const auto y = centre.y - std::cos(angle) * labelRadiusY;
+            const auto label = juce::Rectangle<float>(58.0F, 15.0F).withCentre({x, y});
+            graphics.setColour(index == selectedIndex ? QuadBeatLookAndFeel::accent()
+                                                      : juce::Colour(0xff9ca5aa));
+            graphics.drawFittedText(items[static_cast<size_t>(index)].text, label.toNearestInt(),
+                                    juce::Justification::centred, 1, 0.72F);
+        }
     }
 
     for (int tick = 0; tick < count; ++tick) {

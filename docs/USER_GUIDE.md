@@ -10,9 +10,10 @@
 6. TIME changes the primary duration/rate/pitch behavior. LEVEL/DEPTH uses a smoothed equal-power
    dry/wet/intensity transition.
 
-The console surface follows a compact hardware-console layout: a microphone/headphones utility strip,
-four dense channel strips, a stereo-metered master section, and a narrow Beat FX strip. The microphone
-level, cue, and mute controls operate the same functional microphone bus configured in Settings.
+The console surface follows a compact effects-focused layout: a microphone/headphones utility strip,
+a stereo-metered master section, and a wide Beat FX section. The four internal channel strips are not
+shown. The microphone level, cue, and mute controls operate the same functional microphone bus
+configured in Settings.
 The touchscreen-style display shows the current effect, BPM source, adjacent and selected
 beat divisions, effect-aware TIME value, and LEVEL/DEPTH percentage. Select any of the eight beat
 cells directly with the mouse, or focus the display and use the left/right arrow keys; the display,
@@ -31,11 +32,10 @@ open Settings and choose an available fallback.
 ## VST3 host operation
 
 Install the complete `QuadBeat FX.vst3` bundle and rescan the host's plugin folders. Insert it as an
-audio effect. The primary stereo input feeds Channel 1 and the stereo output carries Master. The
-host exposes auxiliary stereo input buses for Channels 2-4 and a mono Microphone input bus; enable
-and route those buses in the host when needed. The **HOST I/O** button explains this routing in the
-plugin editor. Device selection remains a standalone-only setting because sample rate, block size,
-and physical I/O are owned by the host while the VST3 is running.
+audio effect. Its single stereo input feeds the first internal processing path and its stereo output
+carries Master. The **HOST I/O** button explains this routing in the plugin editor. Device selection
+remains a standalone-only setting because sample rate, block size, and physical I/O are owned by the
+host while the VST3 is running.
 
-The plugin editor can be resized from 1200 x 820 upward. Its scale selector resizes only the editor,
-not the desktop, and the minimum layout retains all four channel strips.
+The plugin editor can be resized from 900 x 720 upward. Its scale selector resizes only the editor,
+not the desktop. Dense effect names use fixed columns so labels do not overlap.
