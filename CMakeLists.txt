@@ -1,10 +1,14 @@
 cmake_minimum_required(VERSION 3.24)
-project(QuadBeatFX VERSION 0.1.1 LANGUAGES C CXX)
+project(QuadBeatFX VERSION 0.1.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(MSVC)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 set(QB_PRODUCT_NAME "QuadBeat FX" CACHE STRING "Product display name")
 set(QB_COMPANY_NAME "QuadBeat Audio" CACHE STRING "Company display name")
@@ -132,4 +136,7 @@ install(TARGETS QuadBeatFX RUNTIME DESTINATION . BUNDLE DESTINATION .)
 install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/QuadBeatFXPlugin_artefacts/$<CONFIG>/VST3/${QB_PRODUCT_NAME}.vst3"
         DESTINATION VST3 OPTIONAL)
 install(FILES README.md INSTALL-VST3-WINDOWS.txt LICENSE.md THIRD_PARTY_NOTICES.md DESTINATION .)
+if(WIN32)
+    install(FILES Install-QuadBeatFX-VST3.cmd Install-QuadBeatFX-VST3.ps1 DESTINATION .)
+endif()
 include(cmake/Packaging.cmake)

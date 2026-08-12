@@ -50,6 +50,12 @@ int main(int argc, char** argv) {
         plugin->getBus(false, 0)->getName() != "Output")
         return fail("Unexpected VST3 bus names");
 
+    auto monoLayout = plugin->getBusesLayout();
+    monoLayout.inputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    monoLayout.outputBuses.getReference(0) = juce::AudioChannelSet::mono();
+    if (!plugin->setBusesLayout(monoLayout))
+        return fail("The host could not negotiate a mono effect layout");
+
     auto layout = plugin->getBusesLayout();
     layout.inputBuses.getReference(0) = juce::AudioChannelSet::stereo();
     layout.outputBuses.getReference(0) = juce::AudioChannelSet::stereo();
@@ -74,10 +80,12 @@ int main(int argc, char** argv) {
     auto* editor = plugin->createEditorAndMakeActive();
     if (editor == nullptr)
         return fail("VST3 did not create its editor");
-    if (editor->getWidth() < 900 || editor->getHeight() < 720)
+    if (editor->getWidth() < 340 || editor->getHeight() < 900)
         return fail("VST3 editor opened below its supported minimum size");
-    editor->setSize(900, 720);
-    if (editor->getWidth() != 900 || editor->getHeight() != 720)
+    if (editor->getHeight() <= editor->getWidth() * 2)
+        return fail("VST3 editor did not open in the requested long vertical layout");
+    editor->setSize(340, 900);
+    if (editor->getWidth() != 340 || editor->getHeight() != 900)
         return fail("VST3 editor did not accept its documented minimum size");
 
     juce::MemoryBlock state;

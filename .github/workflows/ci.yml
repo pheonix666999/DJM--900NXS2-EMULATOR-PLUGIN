@@ -52,6 +52,15 @@ jobs:
         run: cmake --build --preset ci-windows --parallel 4
       - name: Test
         run: ctest --preset test-windows --output-on-failure --output-junit test-results.xml
+      - name: Validate VST3 installer
+        shell: pwsh
+        run: |
+          $vst3 = Get-ChildItem out/ci-windows -Recurse -Directory -Filter 'QuadBeat FX.vst3' | Select-Object -First 1
+          if (-not $vst3) { throw "'QuadBeat FX.vst3' was not produced" }
+          ./Install-QuadBeatFX-VST3.ps1 -InstallRoot artifacts/installer-test -SourceBundle $vst3.FullName
+          if (-not (Test-Path 'artifacts/installer-test/QuadBeat FX.vst3/Contents/x86_64-win/QuadBeat FX.vst3')) {
+            throw 'The installer did not produce a complete VST3 bundle'
+          }
       - name: Package
         shell: pwsh
         run: |
@@ -65,7 +74,7 @@ jobs:
           New-Item -ItemType Directory -Force artifacts/QuadBeatFX | Out-Null
           Copy-Item $exe.FullName artifacts/QuadBeatFX/
           Copy-Item $vst3.FullName artifacts/QuadBeatFX/ -Recurse
-          Copy-Item README.md,INSTALL-VST3-WINDOWS.txt,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
+          Copy-Item README.md,INSTALL-VST3-WINDOWS.txt,Install-QuadBeatFX-VST3.cmd,Install-QuadBeatFX-VST3.ps1,LICENSE.md,THIRD_PARTY_NOTICES.md artifacts/QuadBeatFX/
           Compress-Archive artifacts/QuadBeatFX/* artifacts/QuadBeatFX-Windows-x64.zip
           (Get-FileHash artifacts/QuadBeatFX-Windows-x64.zip -Algorithm SHA256).Hash |
             Set-Content artifacts/QuadBeatFX-Windows-x64.zip.sha256

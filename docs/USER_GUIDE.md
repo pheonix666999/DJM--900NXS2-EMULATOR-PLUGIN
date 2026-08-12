@@ -10,10 +10,11 @@
 6. TIME changes the primary duration/rate/pitch behavior. LEVEL/DEPTH uses a smoothed equal-power
    dry/wet/intensity transition.
 
-The console surface follows a compact effects-focused layout: a microphone/headphones utility strip,
-a stereo-metered master section, and a wide Beat FX section. The four internal channel strips are not
-shown. The microphone level, cue, and mute controls operate the same functional microphone bus
-configured in Settings.
+The standalone console uses microphone/headphones and master utility strips beside Beat FX. The VST3
+editor uses a narrow vertical Beat FX strip matching the physical workflow: display, X-PAD, beat and
+tempo controls, frequency buttons, effect selector, assignment, TIME, then LEVEL/DEPTH. The four
+internal channel strips are not shown. Standalone microphone controls operate the functional
+microphone bus configured in Settings.
 The touchscreen-style display shows the current effect, BPM source, adjacent and selected
 beat divisions, effect-aware TIME value, and LEVEL/DEPTH percentage. Select any of the eight beat
 cells directly with the mouse, or focus the display and use the left/right arrow keys; the display,
@@ -31,11 +32,15 @@ open Settings and choose an available fallback.
 
 ## VST3 host operation
 
-Install the complete `QuadBeat FX.vst3` bundle and rescan the host's plugin folders. Insert it as an
-audio effect. Its single stereo input feeds the first internal processing path and its stereo output
-carries Master. The **HOST I/O** button explains this routing in the plugin editor. Device selection
+On Windows, extract the release package and run `Install-QuadBeatFX-VST3.cmd`; it uses the standard
+per-user VST3 folder and does not require administrator access. In FL Studio, open
+Options > Manage plugins, enable Verify plugins, Rescan previously verified plugins, and Rescan
+plugins with errors, then select Find installed plugins. Insert QuadBeat FX in a Mixer effect slot.
+Its mono-or-stereo input feeds the first internal processing path and its matching output carries
+Master. The **HOST I/O** button explains this routing in the plugin editor. Device selection
 remains a standalone-only setting because sample rate, block size, and physical I/O are owned by the
 host while the VST3 is running.
 
-The plugin editor can be resized from 900 x 720 upward. Its scale selector resizes only the editor,
-not the desktop. Dense effect names use fixed columns so labels do not overlap.
+The plugin editor can be resized from 340 x 900 upward. Its scale selector resizes only the editor,
+not the desktop. Controls stay vertically stacked and dense effect names use fixed columns so labels
+do not overlap.

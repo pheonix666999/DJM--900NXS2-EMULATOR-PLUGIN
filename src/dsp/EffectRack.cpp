@@ -48,6 +48,7 @@ void EffectRack::prepare(const double sampleRate, const int maximumBlockSize) {
     const auto maximumDelay = static_cast<size_t>(std::ceil(rate * 8.0));
     for (auto& channel : delay)
         channel.assign(maximumDelay, 0.0F);
+    reverb.setSampleRate(rate);
     reset();
 }
 
@@ -59,8 +60,7 @@ void EffectRack::reset() noexcept {
             stage.reset();
     lowState.fill(0.0F);
     highState.fill(0.0F);
-    reverbA.fill(0.0F);
-    reverbB.fill(0.0F);
+    reverb.reset();
     writePosition = 0;
     lfoPhase = 0.0F;
     smoothedTime = time.load();
@@ -181,17 +181,9 @@ void EffectRack::processWet(const float left, const float right, float& wetLeft,
         break;
     }
     case EffectType::reverb: {
-        const auto aDelay = static_cast<float>(rate * (0.029 + beatSeconds * 0.02));
-        const auto bDelay = static_cast<float>(rate * (0.043 + beatSeconds * 0.03));
-        const auto aLeft = readDelay(0, aDelay);
-        const auto aRight = readDelay(1, aDelay * 1.13F);
-        const auto bLeft = readDelay(0, bDelay);
-        const auto bRight = readDelay(1, bDelay * 0.91F);
-        reverbA[0] = 0.7F * reverbA[0] + 0.3F * (aLeft - bRight);
-        reverbA[1] = 0.7F * reverbA[1] + 0.3F * (aRight - bLeft);
-        wetLeft = reverbA[0] + bLeft * 0.5F;
-        wetRight = reverbA[1] + bRight * 0.5F;
-        writeDelay(left + wetRight * feedback, right + wetLeft * feedback);
+        wetLeft = left;
+        wetRight = right;
+        reverb.processStereo(&wetLeft, &wetRight, 1);
         break;
     }
     case EffectType::trans: {
@@ -319,6 +311,16 @@ void EffectRack::process(juce::AudioBuffer<float>& stereo) noexcept {
     p.low = (bandMask & 1U) != 0U;
     p.mid = (bandMask & 2U) != 0U;
     p.high = (bandMask & 4U) != 0U;
+    if (p.type == EffectType::reverb) {
+        juce::Reverb::Parameters reverbParameters;
+        reverbParameters.roomSize = 0.35F + p.time * 0.63F;
+        reverbParameters.damping = 0.62F - p.time * 0.38F;
+        reverbParameters.wetLevel = 0.33F;
+        reverbParameters.dryLevel = 0.0F;
+        reverbParameters.width = 0.92F;
+        reverbParameters.freezeMode = 0.0F;
+        reverb.setParameters(reverbParameters);
+    }
     const auto requestedEnabled = p.enabled;
     const auto quantizePeriod = 60.0 / p.bpm * beatValues[static_cast<size_t>(p.division)] * rate;
     if (samplesToQuantizeBoundary <= 0.0)

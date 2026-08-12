@@ -210,6 +210,17 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     lowButton.setComponentID("frequency");
     midButton.setComponentID("frequency");
     highButton.setComponentID("frequency");
+    effectOnButton.setClickingTogglesState(true);
+    effectOnButton.setComponentID("power");
+    effectOnButton.setToggleState(true, juce::dontSendNotification);
+    effectOnButton.setTooltip("Turn Beat FX processing on or off");
+    effectOnButton.onClick = [this] {
+        lastLearnTarget = "effectOn";
+        effectEnabled = effectOnButton.getToggleState();
+        effectOnButton.setButtonText(effectEnabled ? "ON" : "OFF");
+        updateEffect();
+    };
+    addAndMakeVisible(effectOnButton);
     autoButton.setToggleState(true, juce::dontSendNotification);
     quantizeButton.setToggleState(true, juce::dontSendNotification);
     lowButton.setToggleState(true, juce::dontSendNotification);
@@ -260,7 +271,7 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
     microphone.setValue(engine.microphoneLevel.load());
     microphoneCue.setToggleState(engine.microphoneCue.load(), juce::dontSendNotification);
     microphoneMute.setToggleState(engine.microphoneMute.load(), juce::dontSendNotification);
-    master.setValue(0.8);
+    master.setValue(hostedByPlugin ? 1.0 : 0.8);
     booth.setValue(0.7);
     headphones.setValue(0.7);
     cueMix.setValue(0.5);
@@ -269,7 +280,8 @@ MainComponent::MainComponent(MixerEngine& mixer, TempoEngine& tempo,
              {static_cast<juce::Component*>(&microphone),
               static_cast<juce::Component*>(&microphoneCue),
               static_cast<juce::Component*>(&microphoneMute), static_cast<juce::Component*>(&booth),
-              static_cast<juce::Component*>(&headphones), static_cast<juce::Component*>(&cueMix)})
+              static_cast<juce::Component*>(&headphones), static_cast<juce::Component*>(&cueMix),
+              static_cast<juce::Component*>(&master)})
             control->setVisible(false);
     }
     engine.effectBus.store(EffectBus::master);
@@ -344,7 +356,7 @@ void MainComponent::updateEffect() {
     parameters.depth = static_cast<float>((depth.getValue() + 1.0) * 0.5);
     parameters.bpm = tempoEngine.bpm();
     parameters.division = selectedDivision;
-    parameters.enabled = depth.getValue() > -0.99;
+    parameters.enabled = effectEnabled;
     parameters.quantize = quantized;
     parameters.low = lowButton.getToggleState();
     parameters.mid = midButton.getToggleState();
@@ -506,6 +518,8 @@ float MainComponent::parameterValue(const std::string& id) const {
         return static_cast<float>((time.getValue() + 1.0) * 0.5);
     if (id == "effectDepth")
         return static_cast<float>((depth.getValue() + 1.0) * 0.5);
+    if (id == "effectOn")
+        return effectEnabled ? 1.0F : 0.0F;
     if (id == "effect")
         return static_cast<float>(effectSelector.getSelectedItemIndex()) / 14.0F;
     if (id == "effectBus")
@@ -569,7 +583,12 @@ void MainComponent::setParameterValue(const std::string& id, const float value) 
         time.setValue(normalised * 2.0F - 1.0F);
     else if (id == "effectDepth")
         depth.setValue(normalised * 2.0F - 1.0F);
-    else if (id == "effect")
+    else if (id == "effectOn") {
+        effectEnabled = normalised > 0.5F;
+        effectOnButton.setToggleState(effectEnabled, juce::dontSendNotification);
+        effectOnButton.setButtonText(effectEnabled ? "ON" : "OFF");
+        updateEffect();
+    } else if (id == "effect")
         effectSelector.setSelectedItemIndex(
             std::clamp(static_cast<int>(std::round(normalised * 14.0F)), 0, 14));
     else if (id == "effectBus") {
@@ -653,6 +672,7 @@ AppState MainComponent::captureState() const {
     state.division = selectedDivision;
     state.effectTime = static_cast<float>((time.getValue() + 1.0) * 0.5);
     state.effectDepth = static_cast<float>((depth.getValue() + 1.0) * 0.5);
+    state.effectEnabled = effectEnabled;
     state.lowBand = lowButton.getToggleState();
     state.midBand = midButton.getToggleState();
     state.highBand = highButton.getToggleState();
@@ -698,12 +718,17 @@ void MainComponent::restoreState(const AppState& state) {
     booth.setValue(state.booth);
     headphones.setValue(state.headphones);
     cueMix.setValue(state.cueMix);
+    if (hostedByPlugin)
+        master.setValue(1.0);
     effectSelector.setSelectedItemIndex(static_cast<int>(state.effect));
     busSelector.setSelectedId(8);
     engine.effectBus.store(EffectBus::master);
     selectedDivision = state.division;
     time.setValue(state.effectTime * 2.0F - 1.0F);
     depth.setValue(state.effectDepth * 2.0F - 1.0F);
+    effectEnabled = state.effectEnabled;
+    effectOnButton.setToggleState(effectEnabled, juce::dontSendNotification);
+    effectOnButton.setButtonText(effectEnabled ? "ON" : "OFF");
     lowButton.setToggleState(state.lowBand, juce::dontSendNotification);
     midButton.setToggleState(state.midBand, juce::dontSendNotification);
     highButton.setToggleState(state.highBand, juce::dontSendNotification);

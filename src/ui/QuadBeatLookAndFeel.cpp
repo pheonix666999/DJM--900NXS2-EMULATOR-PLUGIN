@@ -74,6 +74,30 @@ void QuadBeatLookAndFeel::drawButtonBackground(juce::Graphics& graphics, juce::B
         return;
     }
 
+    if (id == "power") {
+        const auto diameter = std::min(bounds.getWidth(), bounds.getHeight());
+        const auto circle =
+            juce::Rectangle<float>(diameter, diameter).withCentre(bounds.getCentre());
+        const auto lit = active || down;
+        graphics.setColour(juce::Colour(0xff020304));
+        graphics.fillEllipse(circle.expanded(2.0F));
+        if (lit) {
+            graphics.setColour(juce::Colour(0xff148dff).withAlpha(0.22F));
+            graphics.fillEllipse(circle.expanded(5.0F));
+        }
+        juce::ColourGradient face(lit ? juce::Colour(0xff43baff) : juce::Colour(0xff30363a),
+                                  circle.getCentreX(), circle.getY(),
+                                  lit ? juce::Colour(0xff0755c7) : juce::Colour(0xff080a0c),
+                                  circle.getCentreX(), circle.getBottom(), false);
+        graphics.setGradientFill(face);
+        graphics.fillEllipse(circle.reduced(3.0F));
+        graphics.setColour(lit ? juce::Colour(0xffd9f4ff) : juce::Colour(0xff62696d));
+        graphics.drawEllipse(circle.reduced(3.0F), lit ? 3.0F : 2.0F);
+        graphics.setColour(button.hasKeyboardFocus(true) ? accent() : juce::Colour(0xff767d81));
+        graphics.drawEllipse(circle, button.hasKeyboardFocus(true) ? 2.0F : 1.0F);
+        return;
+    }
+
     juce::Colour fill(0xff202326);
     juce::Colour outline(0xff60666a);
     if (id == "frequency") {

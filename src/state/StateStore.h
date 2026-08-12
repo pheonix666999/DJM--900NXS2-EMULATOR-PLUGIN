@@ -20,7 +20,7 @@ struct ChannelState {
 };
 
 struct AppState {
-    static constexpr int currentVersion = 2;
+    static constexpr int currentVersion = 3;
     int version{currentVersion};
     std::array<ChannelState, channelCount> channels{};
     float crossfader{};
@@ -33,6 +33,7 @@ struct AppState {
     int division{5};
     float effectTime{0.5F};
     float effectDepth{0.5F};
+    bool effectEnabled{true};
     bool lowBand{true};
     bool midBand{true};
     bool highBand{true};

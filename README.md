@@ -3,8 +3,8 @@
 QuadBeat FX is an original DJ mixer and Beat FX application for Windows 10/11 x64 and
 macOS 12+ (Apple Silicon and Intel). It is delivered as both a standalone application and a VST3
 effect. Its engine combines multi-channel routing, three-band processing, cue/booth/master buses,
-tempo analysis, MIDI mapping, and fifteen real-time stereo effects behind a compact effects-focused
-interface.
+tempo analysis, MIDI mapping, and fifteen real-time stereo effects behind a tall hardware-inspired
+effects workflow.
 
 QuadBeat FX is independently designed. It is not affiliated with, endorsed by, or a product of any
 other audio-equipment manufacturer. The documentation-only reference image is never used as a skin
@@ -51,11 +51,12 @@ only two outputs can run the Master bus; unavailable Booth and Headphones destin
 accessed. Choose an effect, select one or more frequency bands, choose a beat on the X-PAD,
 then raise LEVEL/DEPTH. Press `T` to tap tempo and use the arrow keys to navigate beat divisions.
 
-For VST3 use on Windows, copy the complete `QuadBeat FX.vst3` bundle to
-`C:\Program Files\Common Files\VST3`, then run a verified rescan that includes previously failed
-plugins. The plugin is loaded as an audio effect with one stereo input and one stereo output. See
-`INSTALL-VST3-WINDOWS.txt` in the package. The effects-focused editor can be resized down to
-900 x 720 and does not show the four internal channel strips.
+For VST3 use on Windows, extract the complete package and run `Install-QuadBeatFX-VST3.cmd`. It
+installs without administrator access to `%LOCALAPPDATA%\Programs\Common\VST3`. In FL Studio, enable **Verify plugins**,
+**Rescan previously verified plugins**, and **Rescan plugins with errors**, then run **Find installed
+plugins**. Load QuadBeat FX in a Mixer effect slot. See `INSTALL-VST3-WINDOWS.txt` in the package.
+The hosted editor opens as a narrow vertical Beat FX strip, resizes down to 340 x 900, and does not
+show the four internal channel strips.
 
 GitHub Actions builds and tests both platforms. Open a workflow run's **Artifacts** section to
 download `QuadBeatFX-Windows-x64` or `QuadBeatFX-macOS-Universal`. CI artifacts and releases are

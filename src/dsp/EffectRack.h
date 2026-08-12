@@ -58,8 +58,7 @@ class EffectRack {
     std::array<std::vector<float>, 2> delay;
     std::array<float, 2> lowState{};
     std::array<float, 2> highState{};
-    std::array<float, 2> reverbA{};
-    std::array<float, 2> reverbB{};
+    juce::Reverb reverb;
     std::array<std::array<Biquad, 4>, 2> phaser{};
     float lfoPhase{};
     float smoothedTime{0.5F};

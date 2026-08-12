@@ -25,6 +25,7 @@ juce::var StateStore::toVar(const AppState& state) {
     root->setProperty("division", state.division);
     root->setProperty("effectTime", state.effectTime);
     root->setProperty("effectDepth", state.effectDepth);
+    root->setProperty("effectEnabled", state.effectEnabled);
     root->setProperty("lowBand", state.lowBand);
     root->setProperty("midBand", state.midBand);
     root->setProperty("highBand", state.highBand);
@@ -89,6 +90,8 @@ std::optional<AppState> StateStore::fromVar(const juce::var& value) {
     state.division = std::clamp(static_cast<int>(root->getProperty("division")), 0, 7);
     state.effectTime = safeFloat(root->getProperty("effectTime"), 0.5F, 0.0F, 1.0F);
     state.effectDepth = safeFloat(root->getProperty("effectDepth"), 0.5F, 0.0F, 1.0F);
+    if (root->hasProperty("effectEnabled"))
+        state.effectEnabled = root->getProperty("effectEnabled");
     state.lowBand = root->getProperty("lowBand");
     state.midBand = root->getProperty("midBand");
     state.highBand = root->getProperty("highBand");
@@ -101,7 +104,7 @@ std::optional<AppState> StateStore::fromVar(const juce::var& value) {
     state.uiScale = std::clamp(static_cast<double>(root->getProperty("uiScale")), 0.75, 2.0);
     state.windowX = root->getProperty("windowX");
     state.windowY = root->getProperty("windowY");
-    state.windowWidth = std::clamp(static_cast<int>(root->getProperty("windowWidth")), 900, 3840);
+    state.windowWidth = std::clamp(static_cast<int>(root->getProperty("windowWidth")), 340, 3840);
     state.windowHeight = std::clamp(static_cast<int>(root->getProperty("windowHeight")), 720, 2160);
     state.audioDeviceXml = root->getProperty("audioDeviceXml").toString().toStdString();
     state.midiMappings = root->getProperty("midiMappings");

@@ -88,8 +88,10 @@ class MainComponent final : public juce::Component,
     juce::TextButton lowButton{"LOW"};
     juce::TextButton midButton{"MID"};
     juce::TextButton highButton{"HIGH"};
+    juce::TextButton effectOnButton{"ON"};
     int selectedDivision{5};
     bool quantized{true};
+    bool effectEnabled{true};
     MidiMapper midiMapper;
     std::string lastLearnTarget{"effectDepth"};
     bool midiLearning{};

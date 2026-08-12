@@ -6,8 +6,8 @@ QuadBeatAudioProcessor::QuadBeatAudioProcessor()
     : AudioProcessor(BusesProperties()
                          .withInput("Input", juce::AudioChannelSet::stereo(), true)
                          .withOutput("Output", juce::AudioChannelSet::stereo(), true)) {
-    editorState.windowWidth = 1100;
-    editorState.windowHeight = 800;
+    editorState.windowWidth = 360;
+    editorState.windowHeight = 1040;
     mixer.setTempoEngine(&tempo);
 }
 
@@ -23,9 +23,12 @@ void QuadBeatAudioProcessor::releaseResources() {
 }
 
 bool QuadBeatAudioProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
-    return layouts.inputBuses.size() == 1 && layouts.outputBuses.size() == 1 &&
-           layouts.getMainInputChannelSet() == juce::AudioChannelSet::stereo() &&
-           layouts.getMainOutputChannelSet() == juce::AudioChannelSet::stereo();
+    if (layouts.inputBuses.size() != 1 || layouts.outputBuses.size() != 1)
+        return false;
+    const auto input = layouts.getMainInputChannelSet();
+    const auto output = layouts.getMainOutputChannelSet();
+    return input == output &&
+           (input == juce::AudioChannelSet::mono() || input == juce::AudioChannelSet::stereo());
 }
 
 void QuadBeatAudioProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::MidiBuffer&) {

@@ -137,6 +137,44 @@ void testEffects() {
            "NaN infinity protection");
 }
 
+void testReverbTail() {
+    constexpr double sampleRate = 48000.0;
+    constexpr int blockSize = 256;
+    qb::EffectRack rack;
+    rack.prepare(sampleRate, blockSize);
+    qb::EffectParameters parameters;
+    parameters.type = qb::EffectType::reverb;
+    parameters.enabled = true;
+    parameters.depth = 1.0F;
+    parameters.time = 0.75F;
+    parameters.quantize = false;
+    rack.setParameters(parameters);
+
+    juce::AudioBuffer<float> block(2, blockSize);
+    double earlyTailEnergy{};
+    double lateTailEnergy{};
+    for (int pass = 0; pass < 280; ++pass) {
+        block.clear();
+        if (pass == 0) {
+            block.setSample(0, 0, 1.0F);
+            block.setSample(1, 0, 0.35F);
+        }
+        rack.process(block);
+        double blockEnergy{};
+        for (int channel = 0; channel < block.getNumChannels(); ++channel)
+            for (int sample = 0; sample < block.getNumSamples(); ++sample) {
+                const auto value = block.getSample(channel, sample);
+                blockEnergy += static_cast<double>(value) * static_cast<double>(value);
+            }
+        if (pass >= 12 && pass < 80)
+            earlyTailEnergy += blockEnergy;
+        if (pass >= 120)
+            lateTailEnergy += blockEnergy;
+    }
+    expect(earlyTailEnergy > 1.0e-3, "reverb produces an audible diffuse tail");
+    expect(lateTailEnergy > 1.0e-6, "reverb decay persists beyond the early reflections");
+}
+
 void testQuantizedActivation() {
     qb::EffectRack rack;
     rack.prepare(48000.0, 512);
@@ -268,6 +306,7 @@ void testPhysicalRoutingAndMicrophone() {
 void testStateAndMidi() {
     qb::AppState state;
     state.effect = qb::EffectType::helix;
+    state.effectEnabled = false;
     state.channels[2].mute = true;
     state.inputMappings[8] = 6;
     state.outputMappings[4] = -1;
@@ -276,8 +315,8 @@ void testStateAndMidi() {
     const auto encoded = qb::StateStore::toVar(state);
     const auto decoded = qb::StateStore::fromVar(encoded);
     expect(decoded.has_value() && decoded->effect == qb::EffectType::helix &&
-               decoded->channels[2].mute && decoded->inputMappings[8] == 6 &&
-               decoded->outputMappings[4] == -1 &&
+               !decoded->effectEnabled && decoded->channels[2].mute &&
+               decoded->inputMappings[8] == 6 && decoded->outputMappings[4] == -1 &&
                std::abs(decoded->microphoneLevel - 1.4F) < 0.001F &&
                decoded->analysisSource == qb::TempoAnalysisSource::ch3,
            "state round trip");
@@ -329,6 +368,7 @@ int main() {
     testBeatAndTempo();
     testLiveTempoAnalysis();
     testEffects();
+    testReverbTail();
     testQuantizedActivation();
     testMixer();
     testPhysicalRoutingAndMicrophone();
